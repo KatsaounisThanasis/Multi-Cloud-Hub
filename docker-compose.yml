@@ -1,0 +1,167 @@
+# Docker Compose for Multi-Cloud Infrastructure Management API
+# This provides an easy way to run the entire stack locally
+
+version: '3.8'
+
+services:
+  # Main API service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multicloud-api
+    ports:
+      - "8000:8000"
+    environment:
+      # API Configuration
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=development
+
+      # Database and Redis
+      - DATABASE_URL=postgresql://apiuser:${DB_PASSWORD:-changeme}@postgres:5432/multicloud
+      - REDIS_URL=redis://redis:6379/0
+
+      # Azure Configuration
+      - AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+
+      # AWS Configuration
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+
+      # GCP Configuration
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-service-account.json
+      - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
+
+    volumes:
+      # Mount logs directory for persistence
+      - ./logs:/app/logs
+
+      # Mount templates for easy editing
+      - ./templates:/app/templates
+
+      # Mount Azure CLI credentials
+      - ~/.azure:/root/.azure:ro
+
+      # Mount GCP credentials (if using service account)
+      - ${GCP_CREDENTIALS_PATH:-./credentials}:/app/credentials:ro
+
+      # Development: Mount code for hot reload
+      - ./backend:/app/backend
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+    # Resource limits (adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Networking
+    networks:
+      - multicloud-network
+    depends_on:
+      - postgres
+      - redis
+
+  # Celery Worker for background tasks
+  celery-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: multicloud-worker
+    command: celery -A backend.celery_app worker --loglevel=info --concurrency=2 -Q celery,deployments,maintenance
+    environment:
+      # Database and Redis
+      - DATABASE_URL=postgresql://apiuser:${DB_PASSWORD:-changeme}@postgres:5432/multicloud
+      - REDIS_URL=redis://redis:6379/0
+
+      # Azure Configuration
+      - AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+
+      # AWS Configuration
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
+
+      # GCP Configuration
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-service-account.json
+      - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
+    volumes:
+      - ./logs:/app/logs
+      - ./templates:/app/templates
+      - ~/.azure:/root/.azure:ro
+      - ${GCP_CREDENTIALS_PATH:-./credentials}:/app/credentials:ro
+      # Development: Mount code for hot reload
+      - ./backend:/app/backend
+    networks:
+      - multicloud-network
+    depends_on:
+      - postgres
+      - redis
+    restart: unless-stopped
+
+  # Redis for Celery task queue
+  redis:
+    image: redis:7-alpine
+    container_name: multicloud-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - multicloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # PostgreSQL for deployment tracking
+  postgres:
+    image: postgres:15-alpine
+    container_name: multicloud-db
+    environment:
+      - POSTGRES_DB=multicloud
+      - POSTGRES_USER=apiuser
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - multicloud-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apiuser"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+networks:
+  multicloud-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  postgres-data:

@@ -1,0 +1,297 @@
+# GitHub Actions CI/CD Pipeline
+# Runs tests, checks, and builds on every push and pull request
+
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  # ============================================================================
+  # Linting and Code Quality
+  # ============================================================================
+  lint:
+    name: Lint and Code Quality
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+
+    - name: Run Black (code formatting check)
+      run: black --check backend/ tests/
+
+    - name: Run isort (import sorting check)
+      run: isort --check-only backend/ tests/
+
+    - name: Run Flake8 (linting)
+      run: flake8 backend/ tests/ --max-line-length=120
+
+    - name: Run Pylint (code analysis)
+      run: pylint backend/ --fail-under=7.0 || true
+
+    - name: Run Bandit (security check)
+      run: bandit -r backend/ -ll
+
+  # ============================================================================
+  # Type Checking
+  # ============================================================================
+  type-check:
+    name: Type Checking
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+
+    - name: Run MyPy
+      run: mypy backend/ --ignore-missing-imports
+
+  # ============================================================================
+  # Unit Tests
+  # ============================================================================
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+
+    - name: Run unit tests
+      run: pytest tests/unit/ -v --cov=backend --cov-report=xml --cov-report=term-missing
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-unit-${{ matrix.python-version }}
+
+  # ============================================================================
+  # Integration Tests
+  # ============================================================================
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+
+    - name: Run integration tests
+      run: pytest tests/integration/ -v --cov=backend --cov-report=xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: integration
+        name: codecov-integration
+
+  # ============================================================================
+  # Docker Build and Tests
+  # ============================================================================
+  docker:
+    name: Docker Build and Test
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: false
+        tags: multicloud-api:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build minimal Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile.minimal
+        push: false
+        tags: multicloud-api:minimal
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install test dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-test.txt
+
+    - name: Run Docker tests
+      run: pytest tests/e2e/test_docker_container.py -v -m docker
+
+    - name: Check Docker Compose configuration
+      run: docker-compose config
+
+  # ============================================================================
+  # Security Scanning
+  # ============================================================================
+  security:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit
+
+    - name: Run Safety check
+      run: safety check --json || true
+
+    - name: Run Bandit security scan
+      run: bandit -r backend/ -f json -o bandit-report.json || true
+
+    - name: Upload Bandit results
+      uses: actions/upload-artifact@v3
+      with:
+        name: bandit-report
+        path: bandit-report.json
+
+  # ============================================================================
+  # Code Coverage Report
+  # ============================================================================
+  coverage:
+    name: Code Coverage Report
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+
+    - name: Run all tests with coverage
+      run: pytest --cov=backend --cov-report=html --cov-report=xml --cov-report=term
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v3
+      with:
+        name: coverage-report
+        path: htmlcov/
+
+    - name: Comment coverage on PR
+      if: github.event_name == 'pull_request'
+      uses: py-cov-action/python-coverage-comment-action@v3
+      with:
+        GITHUB_TOKEN: ${{ github.token }}
+
+  # ============================================================================
+  # Build Summary
+  # ============================================================================
+  build-summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [lint, type-check, unit-tests, integration-tests, docker, security]
+    if: always()
+
+    steps:
+    - name: Check build status
+      run: |
+        echo "Build Summary:"
+        echo "=============="
+        echo "Lint: ${{ needs.lint.result }}"
+        echo "Type Check: ${{ needs.type-check.result }}"
+        echo "Unit Tests: ${{ needs.unit-tests.result }}"
+        echo "Integration Tests: ${{ needs.integration-tests.result }}"
+        echo "Docker: ${{ needs.docker.result }}"
+        echo "Security: ${{ needs.security.result }}"
+
+    - name: Fail if any job failed
+      if: |
+        needs.lint.result == 'failure' ||
+        needs.type-check.result == 'failure' ||
+        needs.unit-tests.result == 'failure' ||
+        needs.integration-tests.result == 'failure' ||
+        needs.docker.result == 'failure'
+      run: exit 1

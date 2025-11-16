@@ -1,0 +1,26 @@
+# Docker Compose for Development
+# This extends docker-compose.yml with development-specific settings
+
+version: '3.8'
+
+services:
+  api:
+    # Use local code with hot reload
+    volumes:
+      - ./backend:/app/backend
+      - ./templates:/app/templates
+      - ./logs:/app/logs
+
+    # Override command for development mode with auto-reload
+    command: uvicorn backend.api_rest:app --host 0.0.0.0 --port 8000 --reload
+
+    environment:
+      - LOG_LEVEL=DEBUG
+      - ENVIRONMENT=development
+      - PYTHONUNBUFFERED=1
+
+    # Development ports
+    ports:
+      - "8000:8000"
+      # Optional: debugger port
+      - "5678:5678"

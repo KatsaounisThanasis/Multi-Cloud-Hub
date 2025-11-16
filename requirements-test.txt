@@ -1,0 +1,62 @@
+# Testing Dependencies
+# Install with: pip install -r requirements-test.txt
+
+# Core testing framework
+pytest==7.4.3
+pytest-asyncio==0.21.1          # Async test support
+pytest-cov==4.1.0               # Code coverage
+pytest-mock==3.12.0             # Enhanced mocking
+pytest-xdist==3.5.0             # Parallel test execution
+
+# HTTP testing
+httpx==0.25.2                   # Async HTTP client for testing
+requests==2.31.0                # Sync HTTP client
+requests-mock==1.11.0           # Mock HTTP requests
+
+# API testing (fastapi already in requirements.txt)
+# httpx already included above
+
+# Docker testing
+docker==7.0.0                   # Docker SDK for Python
+testcontainers==3.7.1           # Test containers
+
+# Code quality
+black==23.12.1                  # Code formatter
+flake8==7.0.0                   # Linting
+mypy==1.8.0                     # Type checking
+isort==5.13.2                   # Import sorting
+pylint==3.0.3                   # Code analysis
+
+# Type stubs for better type checking
+types-requests==2.31.0.10
+types-pyyaml==6.0.12.12
+
+# Mocking and fixtures
+faker==22.0.0                   # Generate fake data for tests
+freezegun==1.4.0                # Mock datetime
+responses==0.24.1               # Mock requests library
+
+# YAML/JSON testing
+pyyaml==6.0.1
+jsonschema==4.20.0
+
+# Performance testing
+pytest-benchmark==4.0.0         # Benchmark tests
+locust==2.20.0                  # Load testing (optional)
+
+# Reporting
+pytest-html==4.1.1              # HTML test reports
+pytest-json-report==1.5.0       # JSON test reports
+allure-pytest==2.13.2           # Allure test reports
+
+# CI/CD helpers
+tox==4.11.4                     # Test automation
+coverage[toml]==7.4.0           # Coverage with TOML support
+
+# Azure testing mocks
+azure-core==1.29.6
+azure-identity==1.15.0
+
+# Security testing
+bandit==1.7.6                   # Security linting
+safety==3.0.1                   # Check for known vulnerabilities

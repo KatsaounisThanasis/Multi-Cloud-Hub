@@ -1,0 +1,80 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.hypothesis/
+
+# Logs
+logs/
+*.log
+
+# Environment files
+.env
+.env.local
+.env.*
+*.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Documentation (not needed in container)
+*.md
+!requirements.txt
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfplan
+.terraform.lock.hcl
+
+# Azure
+.azure/
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+
+# Test files
+tests/
+test_*.py
+
+# Examples (optional - comment out if you want them in container)
+# examples/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.bak
+
+# Node modules (if any)
+node_modules/
+
+# Frontend (if not needed in API container)
+frontend/
