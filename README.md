@@ -1,5 +1,13 @@
 # Multi-Cloud Infrastructure Manager
 
+![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)
+![Python](https://img.shields.io/badge/python-3.11-blue.svg)
+![React](https://img.shields.io/badge/react-18-61DAFB.svg)
+![Terraform](https://img.shields.io/badge/terraform-1.5+-purple.svg)
+![Docker](https://img.shields.io/badge/docker-ready-2496ED.svg)
+![Azure](https://img.shields.io/badge/cloud-Azure-0078D4.svg)
+![GCP](https://img.shields.io/badge/cloud-GCP-4285F4.svg)
+
 A unified platform for deploying and managing cloud infrastructure
 across Azure and Google Cloud Platform using Terraform.
 
@@ -32,8 +40,14 @@ across Azure and Google Cloud Platform using Terraform.
 
 ## Documentation
 
-See [docs/](docs/) for detailed guides.
+See [docs/](docs/) for detailed guides:
+
+- [Quick Start](docs/QUICK_START.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [API Reference](docs/API_REFERENCE.md)
+- [Credentials Setup](docs/CREDENTIALS_SETUP.md)
+- [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
 
 ## License
 
-MIT
+Apache License 2.0 - See [LICENSE](LICENSE) for details.
