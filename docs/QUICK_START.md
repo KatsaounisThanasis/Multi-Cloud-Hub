@@ -49,7 +49,7 @@ docker compose up -d
 
 ## Step 5: Access the Application
 
-- **Frontend:** http://localhost:3000
+- **Frontend:** http://localhost:5174
 - **API:** http://localhost:8000
 - **API Docs:** http://localhost:8000/docs
 

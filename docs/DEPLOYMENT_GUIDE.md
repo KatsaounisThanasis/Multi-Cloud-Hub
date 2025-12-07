@@ -6,7 +6,7 @@ How to deploy cloud resources using the Multi-Cloud Infrastructure Manager.
 
 ### Step 1: Open the Dashboard
 
-Navigate to http://localhost:3000
+Navigate to http://localhost:5174
 
 ### Step 2: Select a Template
 

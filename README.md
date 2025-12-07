@@ -29,7 +29,7 @@ across Azure and Google Cloud Platform using Terraform.
    ```bash
    docker compose up -d
    ```
-4. Open http://localhost:3000
+4. Open http://localhost:5174
 
 ## Tech Stack
 
