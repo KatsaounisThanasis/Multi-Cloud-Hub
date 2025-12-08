@@ -2,7 +2,7 @@
 Terraform State Backend Manager
 
 Διαχειρίζεται remote state backends για Terraform deployments σε διάφορους cloud providers.
-Υποστηρίζει S3 (AWS), Azure Storage, και GCS (GCP).
+Υποστηρίζει Azure Storage και GCS (GCP).
 """
 
 import json
@@ -14,7 +14,6 @@ import os
 
 class BackendType(str, Enum):
     """Τύποι backend για Terraform state"""
-    S3 = "s3"  # AWS S3
     AZURERM = "azurerm"  # Azure Storage
     GCS = "gcs"  # Google Cloud Storage
     LOCAL = "local"  # Local (για development)
@@ -31,7 +30,7 @@ class StateBackendManager:
     def __init__(self, cloud_platform: str, deployment_id: str, region: str = None):
         """
         Args:
-            cloud_platform: aws, gcp, ή azure
+            cloud_platform: gcp ή azure
             deployment_id: Μοναδικό ID του deployment
             region: Region για το backend storage
         """
@@ -43,16 +42,14 @@ class StateBackendManager:
     def _get_default_region(self) -> str:
         """Επιστρέφει default region για κάθε cloud"""
         defaults = {
-            "aws": "us-east-1",
             "gcp": "us-central1",
             "azure": "eastus"
         }
-        return defaults.get(self.cloud_platform, "us-east-1")
+        return defaults.get(self.cloud_platform, "eastus")
 
     def _determine_backend_type(self) -> BackendType:
         """Καθορίζει τον τύπο backend με βάση το cloud platform"""
         backend_map = {
-            "aws": BackendType.S3,
             "gcp": BackendType.GCS,
             "azure": BackendType.AZURERM
         }
@@ -69,7 +66,6 @@ class StateBackendManager:
     def _get_bucket_name_from_env(self) -> Optional[str]:
         """Παίρνει το bucket/container name από environment variables"""
         env_vars = {
-            "aws": "TERRAFORM_STATE_S3_BUCKET",
             "gcp": "TERRAFORM_STATE_GCS_BUCKET",
             "azure": "TERRAFORM_STATE_STORAGE_ACCOUNT"
         }
@@ -91,56 +87,18 @@ class StateBackendManager:
             Dictionary με backend configuration
 
         Example:
-            >>> manager = StateBackendManager("aws", "deploy-123", "us-east-1")
+            >>> manager = StateBackendManager("azure", "deploy-123", "eastus")
             >>> config = manager.generate_backend_config("my-terraform-state-bucket")
         """
         # Παίρνει bucket name από argument ή environment
         storage_name = bucket_name or self._get_bucket_name_from_env()
 
-        if self.backend_type == BackendType.S3:
-            return self._generate_s3_backend(storage_name, **kwargs)
-        elif self.backend_type == BackendType.AZURERM:
+        if self.backend_type == BackendType.AZURERM:
             return self._generate_azurerm_backend(storage_name, **kwargs)
         elif self.backend_type == BackendType.GCS:
             return self._generate_gcs_backend(storage_name, **kwargs)
         else:
             return self._generate_local_backend()
-
-    def _generate_s3_backend(
-        self,
-        bucket_name: Optional[str],
-        dynamodb_table: Optional[str] = None,
-        **kwargs
-    ) -> Dict[str, Any]:
-        """
-        Δημιουργεί S3 backend configuration για AWS.
-
-        S3 backend χρησιμοποιεί:
-        - S3 bucket για state storage
-        - DynamoDB table για state locking (προαιρετικό)
-        """
-        if not bucket_name:
-            return self._generate_local_backend()
-
-        config = {
-            "terraform": {
-                "backend": {
-                    "s3": {
-                        "bucket": bucket_name,
-                        "key": self._generate_state_key(),
-                        "region": self.region,
-                        "encrypt": True,  # Encryption at rest
-                    }
-                }
-            }
-        }
-
-        # Προσθήκη DynamoDB table για locking (προτεινόμενο)
-        if dynamodb_table:
-            config["terraform"]["backend"]["s3"]["dynamodb_table"] = dynamodb_table
-            config["terraform"]["backend"]["s3"]["lock_table"] = dynamodb_table
-
-        return config
 
     def _generate_azurerm_backend(
         self,
@@ -293,12 +251,6 @@ class StateBackendManager:
             Dictionary με validation results
         """
         requirements = {
-            "aws": {
-                "has_credentials": bool(
-                    os.getenv("AWS_ACCESS_KEY_ID") and os.getenv("AWS_SECRET_ACCESS_KEY")
-                ),
-                "has_bucket_config": bool(os.getenv("TERRAFORM_STATE_S3_BUCKET"))
-            },
             "gcp": {
                 "has_credentials": bool(
                     os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("GOOGLE_CREDENTIALS")
@@ -329,7 +281,7 @@ def create_backend_config(
     Helper function για γρήγορη δημιουργία backend configuration.
 
     Example:
-        >>> config = create_backend_config("aws", "deploy-123", "us-east-1", "my-state-bucket")
+        >>> config = create_backend_config("azure", "deploy-123", "eastus", "my-state-bucket")
     """
     manager = StateBackendManager(cloud_platform, deployment_id, region)
     return manager.generate_backend_config(storage_name, **kwargs)

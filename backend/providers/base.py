@@ -2,7 +2,7 @@
 Base classes and interfaces for cloud provider abstraction.
 
 This module defines the abstract base class that all cloud providers must implement,
-ensuring a consistent interface across Azure, AWS, GCP, and other cloud platforms.
+ensuring a consistent interface across Azure, GCP, and other cloud platforms.
 """
 
 from abc import ABC, abstractmethod
@@ -15,7 +15,6 @@ from enum import Enum
 class ProviderType(Enum):
     """Supported cloud provider types."""
     AZURE = "azure"
-    AWS = "aws"
     GCP = "gcp"
     TERRAFORM = "terraform"
 
@@ -81,7 +80,7 @@ class CloudResource:
     Attributes:
         id: Unique resource identifier
         name: Resource name
-        type: Resource type (e.g., VirtualMachine, S3Bucket, ComputeInstance)
+        type: Resource type (e.g., VirtualMachine, StorageAccount, ComputeInstance)
         location: Geographic location
         resource_group: Parent resource group/stack
         properties: Resource-specific properties
@@ -100,7 +99,7 @@ class CloudProvider(ABC):
     """
     Abstract base class for cloud provider implementations.
 
-    All cloud providers (Azure, AWS, GCP) must implement this interface
+    All cloud providers (Azure, GCP) must implement this interface
     to ensure consistent behavior across the application.
     """
 

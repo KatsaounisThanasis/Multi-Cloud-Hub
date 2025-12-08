@@ -30,9 +30,8 @@ class TestTemplateManagerBasic:
         manager = TemplateManager(templates_root="templates")
         cache = manager._templates_cache
 
-        # Should have entries for different providers
+        # Should have entries for different providers (Azure and GCP only)
         assert "bicep" in cache
-        assert "terraform-aws" in cache
         assert "terraform-gcp" in cache
         assert "terraform-azure" in cache
 
@@ -74,18 +73,15 @@ class TestTemplateManagerWithMockDirectory:
         bicep_file = templates_dir / "test-storage.bicep"
         bicep_file.write_text("// Test storage account template\n\nresource storage 'Microsoft.Storage/storageAccounts@2021-04-01' = {}")
 
-        # Create terraform directories
+        # Create terraform directories (Azure and GCP only)
         tf_azure_dir = templates_dir / "terraform" / "azure"
         tf_azure_dir.mkdir(parents=True)
-
-        tf_aws_dir = templates_dir / "terraform" / "aws"
-        tf_aws_dir.mkdir(parents=True)
 
         tf_gcp_dir = templates_dir / "terraform" / "gcp"
         tf_gcp_dir.mkdir(parents=True)
 
         # Create mock terraform files
-        (tf_aws_dir / "test-bucket.tf").write_text("resource \"aws_s3_bucket\" \"test\" {}")
+        (tf_azure_dir / "test-storage.tf").write_text("resource \"azurerm_storage_account\" \"test\" {}")
         (tf_gcp_dir / "test-bucket.tf").write_text("resource \"google_storage_bucket\" \"test\" {}")
 
         return templates_dir
@@ -97,26 +93,26 @@ class TestTemplateManagerWithMockDirectory:
         templates = manager.list_templates()
 
         # Should find at least the templates we created
-        assert len(templates) >= 3  # bicep + aws + gcp
+        assert len(templates) >= 3  # bicep + azure + gcp
 
     def test_filters_by_provider(self, temp_templates_dir):
         """Test filtering templates by provider type"""
         manager = TemplateManager(templates_root=str(temp_templates_dir))
 
         bicep_templates = manager.list_templates(provider_type="bicep")
-        aws_templates = manager.list_templates(provider_type="terraform-aws")
+        gcp_templates = manager.list_templates(provider_type="terraform-gcp")
 
         # Should have at least one of each
         assert len(bicep_templates) >= 1
-        assert len(aws_templates) >= 1
+        assert len(gcp_templates) >= 1
 
         # Bicep templates should be for Azure
         for template in bicep_templates:
             assert template['cloud_provider'] == 'azure'
 
-        # AWS templates should be for AWS
-        for template in aws_templates:
-            assert template['cloud_provider'] == 'aws'
+        # GCP templates should be for GCP
+        for template in gcp_templates:
+            assert template['cloud_provider'] == 'gcp'
 
     def test_get_template_by_name(self, temp_templates_dir):
         """Test getting a specific template by name"""

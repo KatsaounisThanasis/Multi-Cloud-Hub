@@ -26,7 +26,6 @@ class TemplateFormat(Enum):
 class CloudProvider(Enum):
     """Cloud providers."""
     AZURE = "azure"
-    AWS = "aws"
     GCP = "gcp"
 
 
@@ -77,7 +76,6 @@ class TemplateManager:
         self._templates_cache = {
             "bicep": self._scan_bicep_templates(),
             "terraform-azure": self._scan_terraform_templates(CloudProvider.AZURE),
-            "terraform-aws": self._scan_terraform_templates(CloudProvider.AWS),
             "terraform-gcp": self._scan_terraform_templates(CloudProvider.GCP),
         }
 
@@ -239,8 +237,8 @@ class TemplateManager:
         List available templates.
 
         Args:
-            provider_type: Filter by provider type (e.g., "azure", "terraform-aws")
-            cloud: Filter by cloud provider (e.g., "azure", "aws", "gcp")
+            provider_type: Filter by provider type (e.g., "azure", "terraform-gcp")
+            cloud: Filter by cloud provider (e.g., "azure", "gcp")
 
         Returns:
             List of template metadata dictionaries
@@ -306,7 +304,7 @@ class TemplateManager:
             return ["terraform-gcp"]
 
         # Legacy provider names (for backward compatibility)
-        elif provider_type in ["bicep", "terraform-azure", "terraform-aws", "terraform-gcp"]:
+        elif provider_type in ["bicep", "terraform-azure", "terraform-gcp"]:
             return [provider_type]
 
         # Unknown provider
@@ -370,13 +368,6 @@ class TemplateManager:
                     "format": "terraform",
                     "cloud": "azure",
                     "template_count": len(self._templates_cache.get("terraform-azure", []))
-                },
-                {
-                    "id": "terraform-aws",
-                    "name": "AWS (Terraform)",
-                    "format": "terraform",
-                    "cloud": "aws",
-                    "template_count": len(self._templates_cache.get("terraform-aws", []))
                 },
                 {
                     "id": "terraform-gcp",

@@ -25,11 +25,6 @@ services:
       - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
       - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
 
-      # AWS Configuration
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
-
       # GCP Configuration
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-service-account.json
       - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
@@ -127,11 +122,6 @@ services:
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
       - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
       - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
-
-      # AWS Configuration
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-us-east-1}
 
       # GCP Configuration
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-service-account.json

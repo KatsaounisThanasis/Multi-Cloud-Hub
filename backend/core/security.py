@@ -182,57 +182,6 @@ def get_trusted_hosts() -> Optional[List[str]]:
     return hosts
 
 
-def sanitize_string(value: str, max_length: int = 1000) -> str:
-    """
-    Sanitize user input string.
-
-    Args:
-        value: Input string to sanitize
-        max_length: Maximum allowed length
-
-    Returns:
-        Sanitized string
-    """
-    # Remove null bytes
-    value = value.replace("\x00", "")
-
-    # Limit length
-    if len(value) > max_length:
-        value = value[:max_length]
-
-    return value
-
-
-def sanitize_filename(filename: str) -> str:
-    """
-    Sanitize filename to prevent path traversal attacks.
-
-    Args:
-        filename: Original filename
-
-    Returns:
-        Sanitized filename
-    """
-    import re
-    from pathlib import Path
-
-    # Remove any path components
-    filename = Path(filename).name
-
-    # Remove any non-alphanumeric characters except dots, dashes, underscores
-    filename = re.sub(r'[^a-zA-Z0-9._-]', '_', filename)
-
-    # Prevent hidden files
-    if filename.startswith('.'):
-        filename = '_' + filename[1:]
-
-    # Ensure not empty
-    if not filename:
-        filename = "unnamed_file"
-
-    return filename
-
-
 def validate_deployment_parameters(parameters: dict) -> tuple[bool, Optional[str]]:
     """
     Validate deployment parameters for security issues.

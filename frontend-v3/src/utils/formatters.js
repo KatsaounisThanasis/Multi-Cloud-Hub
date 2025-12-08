@@ -143,3 +143,50 @@ export function formatDate(date) {
     minute: '2-digit'
   });
 }
+
+/**
+ * Get CSS classes for deployment status badge
+ *
+ * @param {string} status - Deployment status (completed, pending, running, failed, etc.)
+ * @returns {string} - Tailwind CSS classes for the status badge
+ */
+export function getStatusColor(status) {
+  const statusLower = status?.toLowerCase();
+
+  const colorMap = {
+    'completed': 'bg-green-100 text-green-800 border-green-200',
+    'success': 'bg-green-100 text-green-800 border-green-200',
+    'pending': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    'queued': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    'running': 'bg-blue-100 text-blue-800 border-blue-200',
+    'in_progress': 'bg-blue-100 text-blue-800 border-blue-200',
+    'failed': 'bg-red-100 text-red-800 border-red-200',
+    'error': 'bg-red-100 text-red-800 border-red-200',
+    'cancelled': 'bg-gray-100 text-gray-800 border-gray-200',
+    'destroyed': 'bg-purple-100 text-purple-800 border-purple-200',
+  };
+
+  return colorMap[statusLower] || 'bg-gray-100 text-gray-800 border-gray-200';
+}
+
+/**
+ * Format provider type for display - hide backend implementation details
+ *
+ * @param {string} providerType - Provider type from backend (e.g., "terraform-azure", "bicep")
+ * @returns {string} - User-friendly provider name (e.g., "Azure", "Google Cloud")
+ */
+export function formatProviderType(providerType) {
+  if (!providerType) return 'Unknown';
+
+  // Map all Azure variants to just "Azure"
+  if (providerType === 'bicep' || providerType === 'terraform-azure' || providerType === 'azure') {
+    return 'Azure';
+  }
+
+  // Map all GCP variants to just "Google Cloud"
+  if (providerType === 'terraform-gcp' || providerType === 'gcp') {
+    return 'Google Cloud';
+  }
+
+  return providerType;
+}

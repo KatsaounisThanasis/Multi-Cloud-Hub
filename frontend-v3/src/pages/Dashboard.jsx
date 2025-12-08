@@ -4,6 +4,7 @@ import { deploymentAPI } from '../api/client';
 import Tooltip from '../components/Tooltip';
 import { SkeletonCard } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
+import { formatTemplateName, getStatusColor, formatProviderType } from '../utils/formatters';
 
 function Dashboard() {
   const [searchParams] = useSearchParams();
@@ -13,15 +14,6 @@ function Dashboard() {
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [statusFilter, setStatusFilter] = useState('all');
   const [providerFilter, setProviderFilter] = useState('all');
-
-  // Format template name - remove dashes and capitalize
-  const formatTemplateName = (name) => {
-    if (!name) return name;
-    return name
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
 
   const fetchDeployments = async () => {
     try {
@@ -49,47 +41,28 @@ function Dashboard() {
     }
   };
 
+  // Initial fetch
   useEffect(() => {
     fetchDeployments();
-    const interval = setInterval(fetchDeployments, 5000);
-    return () => clearInterval(interval);
   }, []);
 
-  const getStatusColor = (status) => {
-    const statusLower = status?.toLowerCase();
-    switch (statusLower) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'running':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'failed':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
+  // Polling only when there are active (pending/running) deployments
+  useEffect(() => {
+    const hasActiveDeployments = deployments.some(
+      d => d.status?.toLowerCase() === 'pending' || d.status?.toLowerCase() === 'running'
+    );
+
+    if (!hasActiveDeployments) return;
+
+    const interval = setInterval(fetchDeployments, 5000);
+    return () => clearInterval(interval);
+  }, [deployments]);
 
   const getProviderIcon = (provider) => {
     if (provider === 'azure' || provider === 'bicep') return '☁️';
     if (provider === 'gcp' || provider?.includes('terraform-gcp')) return '🌐';
     if (provider?.includes('terraform')) return '🔧';
     return '☁️';
-  };
-
-  // Format provider type for display - hide backend implementation details
-  const formatProviderType = (providerType) => {
-    if (!providerType) return 'Unknown';
-    // Map all Azure variants to just "Azure"
-    if (providerType === 'bicep' || providerType === 'terraform-azure' || providerType === 'azure') {
-      return 'Azure';
-    }
-    // Map all GCP variants to just "Google Cloud"
-    if (providerType === 'terraform-gcp' || providerType === 'gcp') {
-      return 'Google Cloud';
-    }
-    return providerType;
   };
 
   // Calculate stats

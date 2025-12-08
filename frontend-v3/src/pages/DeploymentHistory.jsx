@@ -70,7 +70,6 @@ function DeploymentHistory() {
   const getProviderIcon = (provider) => {
     if (provider.includes('azure')) return '☁️';
     if (provider.includes('gcp')) return '🌩️';
-    if (provider.includes('aws')) return '🔶';
     return '☁️';
   };
 
@@ -164,7 +163,6 @@ function DeploymentHistory() {
                 <option value="">All Providers</option>
                 <option value="terraform-azure">Azure</option>
                 <option value="terraform-gcp">GCP</option>
-                <option value="terraform-aws">AWS</option>
               </select>
             </div>
           </div>

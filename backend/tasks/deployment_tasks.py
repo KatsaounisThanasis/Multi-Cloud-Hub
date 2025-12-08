@@ -15,8 +15,27 @@ import logging
 import traceback
 import uuid
 import json
+import re
 
 logger = logging.getLogger(__name__)
+
+
+def strip_ansi_codes(text: str) -> str:
+    """
+    Remove ANSI escape codes and box-drawing characters from text.
+    These are color codes and formatting from Terraform output that shouldn't be stored in the database.
+    """
+    if not text:
+        return text
+    # Remove ANSI escape sequences
+    ansi_pattern = re.compile(r'\x1b\[[0-9;]*[a-zA-Z]|\x1b\[[0-9;]*m')
+    text = ansi_pattern.sub('', text)
+    # Remove box-drawing characters (│╵╷╭╮╰╯┌┐└┘├┤┬┴┼─)
+    text = re.sub(r'[│╵╷╭╮╰╯┌┐└┘├┤┬┴┼─]', '', text)
+    # Clean up multiple spaces and empty lines
+    text = re.sub(r'[ \t]+', ' ', text)
+    text = re.sub(r'\n\s*\n', '\n', text)
+    return text.strip()
 
 
 def log_entry(level: str, message: str, phase: str = None, details: dict = None) -> str:
@@ -80,7 +99,7 @@ def deploy_infrastructure(
 
     Args:
         deployment_id: Unique deployment identifier
-        provider_type: Provider type (azure, terraform-aws, terraform-gcp, etc.)
+        provider_type: Provider type (azure, terraform-gcp, etc.)
         template_path: Path to template file
         parameters: Template parameters
         resource_group: Resource group name (for Azure)
@@ -119,7 +138,6 @@ def deploy_infrastructure(
             "bicep": "azure",
             "arm": "azure",
             "terraform-azure": "terraform-azure",
-            "terraform-aws": "terraform-aws",
             "terraform-gcp": "terraform-gcp"
         }
         actual_provider_type = provider_type_mapping.get(provider_type, provider_type)
@@ -292,14 +310,14 @@ def deploy_infrastructure(
     except (DeploymentError, ProviderConfigurationError) as e:
         logger.error(f"Deployment {deployment_id} failed: {str(e)}")
 
-        # Update deployment record with error
+        # Update deployment record with error - strip ANSI codes from error message
         if deployment:
             deployment.status = DeploymentStatus.FAILED
             deployment.completed_at = datetime.utcnow()
-            deployment.error_message = str(e)
+            deployment.error_message = strip_ansi_codes(str(e))
             deployment.logs += "\n" + log_entry("ERROR", "✗ Deployment failed", phase="failed",
                                                details={"error_type": type(e).__name__})
-            deployment.logs += log_entry("ERROR", str(e), phase="failed")
+            deployment.logs += log_entry("ERROR", strip_ansi_codes(str(e)), phase="failed")
             deployment.logs += f"\n--- Full Traceback ---\n{traceback.format_exc()}"
             db.commit()
 
@@ -319,14 +337,14 @@ def deploy_infrastructure(
     except Exception as e:
         logger.error(f"Unexpected error in deployment {deployment_id}: {str(e)}")
 
-        # Update deployment record
+        # Update deployment record - strip ANSI codes from error message
         if deployment:
             deployment.status = DeploymentStatus.FAILED
             deployment.completed_at = datetime.utcnow()
-            deployment.error_message = f"Unexpected error: {str(e)}"
+            deployment.error_message = f"Unexpected error: {strip_ansi_codes(str(e))}"
             deployment.logs += "\n" + log_entry("ERROR", "✗ Unexpected error occurred", phase="failed",
                                                details={"error_type": type(e).__name__})
-            deployment.logs += log_entry("ERROR", f"Error: {str(e)}", phase="failed")
+            deployment.logs += log_entry("ERROR", f"Error: {strip_ansi_codes(str(e))}", phase="failed")
             deployment.logs += f"\n--- Full Traceback ---\n{traceback.format_exc()}"
             db.commit()
 

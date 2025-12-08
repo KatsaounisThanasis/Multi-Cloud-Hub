@@ -107,7 +107,7 @@ class TerraformState(Base):
     deployment_id = Column(String(50), primary_key=True, index=True)
 
     # State backend configuration
-    backend_type = Column(String(20), nullable=False)  # s3, azurerm, gcs
+    backend_type = Column(String(20), nullable=False)  # azurerm, gcs, local
     backend_config = Column(JSON, nullable=False)
 
     # State metadata

@@ -2,7 +2,7 @@
 Cloud Provider Abstraction Layer
 
 This package provides a unified interface for deploying and managing
-cloud resources across multiple cloud providers (Azure, AWS, GCP).
+cloud resources across multiple cloud providers (Azure and GCP).
 """
 
 from .base import CloudProvider, DeploymentResult, ResourceGroup, CloudResource, ProviderType

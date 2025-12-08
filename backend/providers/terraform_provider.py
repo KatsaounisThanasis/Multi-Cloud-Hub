@@ -2,7 +2,7 @@
 Terraform Provider Implementation
 
 This provider uses Terraform to deploy resources across multiple cloud platforms.
-Supports Azure, AWS, and GCP through Terraform.
+Supports Azure and GCP through Terraform.
 """
 
 import os
@@ -33,7 +33,7 @@ class TerraformProvider(CloudProvider):
     """
     Terraform-based provider for multi-cloud deployments.
 
-    This provider allows deploying to Azure, AWS, and GCP using
+    This provider allows deploying to Azure and GCP using
     Terraform configurations instead of cloud-native templates.
     """
 
@@ -50,7 +50,7 @@ class TerraformProvider(CloudProvider):
         Args:
             subscription_id: Cloud subscription/account ID
             region: Default region
-            cloud_platform: Target cloud (azure, aws, gcp)
+            cloud_platform: Target cloud (azure, gcp)
             terraform_version: Terraform version to use
         """
         super().__init__(subscription_id, region)
@@ -289,12 +289,6 @@ provider "azurerm" {{
   subscription_id = "{self.subscription_id or ''}"
 }}
 """
-        elif self.cloud_platform == "aws":
-            return f"""
-provider "aws" {{
-  region = "{location or self.region or 'us-east-1'}"
-}}
-"""
         elif self.cloud_platform == "gcp":
             return f"""
 provider "google" {{
@@ -336,11 +330,6 @@ resource "azurerm_resource_group" "main" {{
 
 # Additional resources would be converted from the template
 # This is a simplified example - production would need full conversion logic
-"""
-        elif self.cloud_platform == "aws":
-            return f"""
-# AWS resources converted from template
-# CloudFormation stack equivalent
 """
         elif self.cloud_platform == "gcp":
             return f"""
@@ -521,9 +510,7 @@ variable "{key}" {{
     def get_supported_locations(self) -> List[str]:
         """Get supported locations based on cloud platform."""
         if self.cloud_platform == "azure":
-            return ["eastus", "westus", "westeurope", "northeurope"]
-        elif self.cloud_platform == "aws":
-            return ["us-east-1", "us-west-2", "eu-west-1", "eu-central-1"]
+            return ["eastus", "westus", "westeurope", "northeurope", "norwayeast"]
         elif self.cloud_platform == "gcp":
             return ["us-central1", "us-east1", "europe-west1", "asia-east1"]
         return []

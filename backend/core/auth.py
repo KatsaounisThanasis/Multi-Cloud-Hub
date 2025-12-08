@@ -10,7 +10,6 @@ import jwt
 import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
-from functools import wraps
 from fastapi import HTTPException, Header
 from pydantic import BaseModel, EmailStr, validator
 
@@ -245,66 +244,6 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[str, A
         raise HTTPException(status_code=401, detail="User not found")
 
     return user
-
-def require_role(*allowed_roles: str):
-    """
-    Decorator to require specific roles for an endpoint.
-
-    Usage:
-        @require_role(UserRole.ADMIN, UserRole.USER)
-        async def my_endpoint(current_user: dict = Depends(get_current_user)):
-            ...
-    """
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            current_user = kwargs.get('current_user')
-
-            if not current_user:
-                raise HTTPException(status_code=401, detail="Not authenticated")
-
-            user_role = current_user.get('role')
-
-            if user_role not in allowed_roles:
-                raise HTTPException(
-                    status_code=403,
-                    detail=f"Access denied. Required role(s): {', '.join(allowed_roles)}"
-                )
-
-            return await func(*args, **kwargs)
-        return wrapper
-    return decorator
-
-def require_permission(*required_permissions: str):
-    """
-    Decorator to require specific permissions for an endpoint.
-
-    Usage:
-        @require_permission('write', 'delete')
-        async def my_endpoint(current_user: dict = Depends(get_current_user)):
-            ...
-    """
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            current_user = kwargs.get('current_user')
-
-            if not current_user:
-                raise HTTPException(status_code=401, detail="Not authenticated")
-
-            user_role = current_user.get('role')
-            user_permissions = ROLE_PERMISSIONS.get(user_role, [])
-
-            for permission in required_permissions:
-                if permission not in user_permissions:
-                    raise HTTPException(
-                        status_code=403,
-                        detail=f"Access denied. Missing permission: {permission}"
-                    )
-
-            return await func(*args, **kwargs)
-        return wrapper
-    return decorator
 
 def has_permission(user: Dict[str, Any], permission: str) -> bool:
     """Check if a user has a specific permission."""

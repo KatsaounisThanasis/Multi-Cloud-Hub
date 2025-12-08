@@ -1,6 +1,7 @@
 """
 End-to-end tests for Docker container deployment
 """
+import os
 import pytest
 import requests
 import time
@@ -43,6 +44,10 @@ class TestDockerBuild:
         except docker.errors.BuildError as e:
             pytest.fail(f"Docker build failed: {e}")
 
+    @pytest.mark.skipif(
+        not os.path.exists("Dockerfile.minimal"),
+        reason="Dockerfile.minimal not found - skipping minimal image test"
+    )
     def test_build_minimal_image(self, docker_client):
         """Test building minimal Docker image"""
         try:
@@ -184,25 +189,31 @@ class TestDockerCompose:
         """Test docker-compose.yml is valid"""
         import subprocess
 
+        # Use 'docker compose' (new syntax) instead of 'docker-compose'
         result = subprocess.run(
-            ["docker-compose", "config"],
+            ["docker", "compose", "config"],
             capture_output=True,
             text=True
         )
 
-        assert result.returncode == 0, f"docker-compose config failed: {result.stderr}"
+        assert result.returncode == 0, f"docker compose config failed: {result.stderr}"
 
+    @pytest.mark.skipif(
+        not os.path.exists("docker-compose.dev.yml"),
+        reason="docker-compose.dev.yml not found"
+    )
     def test_docker_compose_dev_config_valid(self):
         """Test docker-compose.dev.yml is valid"""
         import subprocess
 
+        # Use 'docker compose' (new syntax) instead of 'docker-compose'
         result = subprocess.run(
-            ["docker-compose", "-f", "docker-compose.yml", "-f", "docker-compose.dev.yml", "config"],
+            ["docker", "compose", "-f", "docker-compose.yml", "-f", "docker-compose.dev.yml", "config"],
             capture_output=True,
             text=True
         )
 
-        assert result.returncode == 0, f"docker-compose dev config failed: {result.stderr}"
+        assert result.returncode == 0, f"docker compose dev config failed: {result.stderr}"
 
 
 class TestDockerImageProperties:

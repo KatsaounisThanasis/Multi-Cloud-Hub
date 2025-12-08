@@ -68,7 +68,7 @@ class ProviderFactory:
         Create a cloud provider instance.
 
         Args:
-            provider_type: Type of provider (e.g., "azure", "aws", "gcp", "terraform")
+            provider_type: Type of provider (e.g., "azure", "gcp", "terraform")
             subscription_id: Cloud subscription/account ID
             region: Default region for operations
             **kwargs: Additional provider-specific configuration

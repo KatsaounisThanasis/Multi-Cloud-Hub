@@ -3,8 +3,103 @@ import { useParams, Link } from 'react-router-dom';
 import { deploymentAPI } from '../api/client';
 import Breadcrumbs from '../components/Breadcrumbs';
 import DeploymentLogViewer from '../components/DeploymentLogViewer';
+import CostPreview from '../components/CostPreview';
+import { formatTemplateName, formatProviderType, getStatusColor } from '../utils/formatters';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// Error Message Card Component - Collapsible and Responsive
+function ErrorMessageCard({ errorMessage }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  // Extract and simplify the error message
+  const extractMainError = (message) => {
+    if (!message) return { summary: 'Unknown error', details: '' };
+
+    // Remove ANSI color codes (multiple patterns) and box drawing characters
+    const cleanMessage = message
+      // Standard ANSI escape codes
+      .replace(/\x1b\[[0-9;]*m/g, '')
+      // Alternative ANSI patterns (with different escape representations)
+      .replace(/\u001b\[[0-9;]*m/g, '')
+      // Escaped versions that might come from JSON
+      .replace(/\\x1b\[[0-9;]*m/g, '')
+      .replace(/\\u001b\[[0-9;]*m/g, '')
+      .replace(/\\033\[[0-9;]*m/g, '')
+      // ESC character directly
+      .replace(/\x1B\[[0-9;]*[a-zA-Z]/g, '')
+      // Box drawing and special characters
+      .replace(/[│╵╷╭╮╰╯┌┐└┘├┤┬┴┼─]/g, '')
+      // Clean up multiple spaces
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // Try to find the main error - look for common Azure/Terraform error patterns
+    const errorPatterns = [
+      // Storage account already taken
+      /StorageAccountAlreadyTaken[:\s]*([^.]+\.)/i,
+      // Location not found
+      /Error:\s*"([^"]+)"\s*was not found[^.]*\./i,
+      // General Azure errors
+      /Error:\s*([^│\n]{10,150})/i,
+      // Terraform errors
+      /│\s*Error:\s*([^│\n]+)/i
+    ];
+
+    for (const pattern of errorPatterns) {
+      const match = cleanMessage.match(pattern);
+      if (match) {
+        let summary = match[0].substring(0, 150);
+        // Clean up the summary
+        summary = summary.replace(/in the list of supported Azure Locations:.*/, '- invalid location specified');
+        return { summary, details: cleanMessage };
+      }
+    }
+
+    return {
+      summary: cleanMessage.substring(0, 150) + '...',
+      details: cleanMessage
+    };
+  };
+
+  const { summary, details } = extractMainError(errorMessage);
+
+  return (
+    <div className="bg-white shadow-sm rounded-lg border border-red-200 overflow-hidden">
+      <div className="px-4 py-4 sm:px-6 bg-red-50">
+        <div className="flex items-start">
+          <svg className="h-5 w-5 text-red-500 flex-shrink-0 mr-3 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base font-medium text-red-900">
+              Deployment Failed
+            </h3>
+            <p className="mt-1 text-sm text-red-700">
+              {summary}
+            </p>
+            <button
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="mt-2 text-sm font-medium text-red-600 hover:text-red-800 focus:outline-none"
+            >
+              {isExpanded ? '▲ Hide full error' : '▼ Show full error'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {isExpanded && (
+        <div className="px-4 py-4 sm:px-6 border-t border-red-200 bg-white">
+          <div className="bg-gray-900 rounded-md p-3 overflow-hidden">
+            <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+              {details}
+            </pre>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function DeploymentDetails() {
   const { id } = useParams();
@@ -12,29 +107,6 @@ function DeploymentDetails() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [taskInfo, setTaskInfo] = useState(null);
-
-  // Format template name - remove dashes and capitalize
-  const formatTemplateName = (name) => {
-    if (!name) return name;
-    return name
-      .split('-')
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-  };
-
-  // Format provider type for display - hide backend implementation details
-  const formatProviderType = (providerType) => {
-    if (!providerType) return 'Unknown';
-    // Map all Azure variants to just "Azure"
-    if (providerType === 'bicep' || providerType === 'terraform-azure' || providerType === 'azure') {
-      return 'Azure';
-    }
-    // Map all GCP variants to just "Google Cloud"
-    if (providerType === 'terraform-gcp' || providerType === 'gcp') {
-      return 'Google Cloud';
-    }
-    return providerType;
-  };
 
   const fetchDeployment = async () => {
     try {
@@ -74,22 +146,6 @@ function DeploymentDetails() {
       return () => clearInterval(interval);
     }
   }, [deployment?.status]);
-
-  const getStatusColor = (status) => {
-    const statusLower = status?.toLowerCase();
-    switch (statusLower) {
-      case 'completed':
-        return 'bg-green-100 text-green-800';
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'running':
-        return 'bg-blue-100 text-blue-800';
-      case 'failed':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
 
   if (loading) {
     return (
@@ -207,20 +263,7 @@ function DeploymentDetails() {
 
         {/* Error Messages */}
         {deployment.error_message && (
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6">
-              <h3 className="text-lg leading-6 font-medium text-red-900">
-                Error Message
-              </h3>
-            </div>
-            <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
-              <div className="bg-red-50 rounded-md p-4">
-                <pre className="text-sm text-red-800 whitespace-pre-wrap font-mono">
-                  {deployment.error_message}
-                </pre>
-              </div>
-            </div>
-          </div>
+          <ErrorMessageCard errorMessage={deployment.error_message} />
         )}
 
         {/* Outputs */}
@@ -255,6 +298,30 @@ function DeploymentDetails() {
                   {JSON.stringify(deployment.parameters, null, 2)}
                 </pre>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Cost Estimation */}
+        {deployment.status === 'completed' && deployment.parameters && (
+          <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+            <div className="px-4 py-5 sm:px-6">
+              <h3 className="text-lg leading-6 font-medium text-gray-900">
+                Cost Estimation
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Estimated monthly cost for this deployment
+              </p>
+            </div>
+            <div className="border-t border-gray-200 px-4 py-5 sm:px-6">
+              <CostPreview
+                provider={deployment.provider_type}
+                templateName={deployment.template_name}
+                parameters={{
+                  location: deployment.location,
+                  ...deployment.parameters
+                }}
+              />
             </div>
           </div>
         )}

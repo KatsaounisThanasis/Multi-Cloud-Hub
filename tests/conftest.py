@@ -21,7 +21,6 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "slow: Slow running tests")
     config.addinivalue_line("markers", "docker: Tests requiring Docker")
     config.addinivalue_line("markers", "azure: Tests requiring Azure credentials")
-    config.addinivalue_line("markers", "aws: Tests requiring AWS credentials")
     config.addinivalue_line("markers", "gcp: Tests requiring GCP credentials")
 
 
@@ -36,15 +35,15 @@ def pytest_collection_modifyitems(config, items):
         elif "e2e" in str(item.fspath):
             item.add_marker(pytest.mark.e2e)
 
-        # Mark tests requiring external services
-        if "docker" in item.nodeid.lower():
-            item.add_marker(pytest.mark.docker)
-        if "azure" in item.nodeid.lower():
-            item.add_marker(pytest.mark.azure)
-        if "aws" in item.nodeid.lower():
-            item.add_marker(pytest.mark.aws)
-        if "gcp" in item.nodeid.lower():
-            item.add_marker(pytest.mark.gcp)
+        # Mark tests requiring external services (only for e2e tests)
+        # Unit and integration tests use mocked credentials or live API
+        if "e2e" in str(item.fspath):
+            if "docker" in item.nodeid.lower():
+                item.add_marker(pytest.mark.docker)
+            if "azure" in item.nodeid.lower():
+                item.add_marker(pytest.mark.azure)
+            if "gcp" in item.nodeid.lower():
+                item.add_marker(pytest.mark.gcp)
 
         # Mark slow tests
         if "e2e" in str(item.fspath) or "docker" in item.nodeid.lower():
@@ -86,9 +85,6 @@ def setup_test_env():
     # Mock credentials for testing (won't actually be used)
     os.environ["AZURE_SUBSCRIPTION_ID"] = "test-sub-id"
     os.environ["AZURE_TENANT_ID"] = "test-tenant-id"
-    os.environ["AWS_ACCESS_KEY_ID"] = "test-access-key"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "test-secret-key"
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
     os.environ["GOOGLE_PROJECT_ID"] = "test-project-id"
 
     yield
@@ -106,16 +102,6 @@ def mock_azure_credentials():
         "tenant_id": "test-tenant-id",
         "client_id": "test-client-id",
         "client_secret": "test-client-secret"
-    }
-
-
-@pytest.fixture
-def mock_aws_credentials():
-    """Mock AWS credentials for testing"""
-    return {
-        "access_key_id": "test-access-key-id",
-        "secret_access_key": "test-secret-access-key",
-        "region": "us-east-1"
     }
 
 
@@ -235,13 +221,6 @@ def pytest_runtest_setup(item):
             os.getenv("AZURE_TENANT_ID")
         ]):
             pytest.skip("Azure credentials not configured")
-
-    if "aws" in [mark.name for mark in item.iter_markers()]:
-        if not all([
-            os.getenv("AWS_ACCESS_KEY_ID"),
-            os.getenv("AWS_SECRET_ACCESS_KEY")
-        ]):
-            pytest.skip("AWS credentials not configured")
 
     if "gcp" in [mark.name for mark in item.iter_markers()]:
         if not os.getenv("GOOGLE_PROJECT_ID"):

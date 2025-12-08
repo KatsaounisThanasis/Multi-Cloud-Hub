@@ -34,11 +34,21 @@ COST_DATABASE = {
         'n2-standard-4': {'cost_per_month': 121.48, 'description': '4 vCPU, 16GB RAM'},
     },
 
-    # Azure Storage Account (per GB/month)
+    # Azure Storage Account (per GB/month) - Real Azure pricing
     'azure_storage': {
-        'LRS_Standard': {'cost_per_gb': 0.02, 'description': 'Locally Redundant Storage - Standard'},
-        'GRS_Standard': {'cost_per_gb': 0.04, 'description': 'Geo-Redundant Storage - Standard'},
-        'Premium': {'cost_per_gb': 0.15, 'description': 'Premium Storage'},
+        # Standard tier
+        'Standard_LRS': {'cost_per_gb': 0.018, 'description': 'Standard - Locally Redundant'},
+        'Standard_GRS': {'cost_per_gb': 0.036, 'description': 'Standard - Geo-Redundant'},
+        'Standard_RAGRS': {'cost_per_gb': 0.046, 'description': 'Standard - Read-Access Geo-Redundant'},
+        'Standard_ZRS': {'cost_per_gb': 0.023, 'description': 'Standard - Zone Redundant'},
+        'Standard_GZRS': {'cost_per_gb': 0.041, 'description': 'Standard - Geo-Zone Redundant'},
+        'Standard_RAGZRS': {'cost_per_gb': 0.052, 'description': 'Standard - Read-Access Geo-Zone Redundant'},
+        # Premium tier (Block Blobs)
+        'Premium_LRS': {'cost_per_gb': 0.15, 'description': 'Premium - Locally Redundant'},
+        'Premium_ZRS': {'cost_per_gb': 0.18, 'description': 'Premium - Zone Redundant'},
+        # Premium does not support GRS, but we'll add a high estimate if selected
+        'Premium_GRS': {'cost_per_gb': 0.20, 'description': 'Premium - Geo-Redundant (not available, estimate)'},
+        'Premium_GZRS': {'cost_per_gb': 0.22, 'description': 'Premium - Geo-Zone Redundant (not available, estimate)'},
     },
 
     # GCP Storage Bucket (per GB/month)
@@ -333,8 +343,61 @@ def estimate_gcp_vm_cost_fallback(parameters: Dict[str, Any]) -> CostEstimate:
     return estimate
 
 
-def estimate_azure_storage_cost(parameters: Dict[str, Any]) -> CostEstimate:
-    """Estimate cost for Azure Storage Account"""
+async def estimate_azure_storage_cost_realtime(parameters: Dict[str, Any]) -> CostEstimate:
+    """Estimate cost for Azure Storage Account using real-time Azure Retail Prices API"""
+    estimate = CostEstimate()
+
+    # Get parameters - handle both flat and nested parameter structures
+    # The API receives: {"location": "...", "parameters": {"account_tier": "...", ...}}
+    nested_params = parameters.get('parameters', {})
+
+    replication_type = nested_params.get('account_replication_type', parameters.get('account_replication_type', 'LRS'))
+    tier = nested_params.get('account_tier', parameters.get('account_tier', 'Standard'))
+    region = parameters.get('location', nested_params.get('location', 'eastus'))
+    estimated_gb = 100  # Estimate 100GB usage
+
+    logger.info(f"Estimating storage cost: tier={tier}, replication={replication_type}, region={region}")
+
+    try:
+        # Get Azure API client
+        azure_client = await get_azure_public_client()
+
+        # Fetch real-time storage pricing
+        storage_pricing = await azure_client.get_storage_pricing(
+            storage_type=tier,
+            region=region,
+            redundancy=replication_type
+        )
+
+        if storage_pricing and storage_pricing.get('price_per_gb_month', 0) > 0:
+            price_per_gb = storage_pricing['price_per_gb_month']
+            storage_cost = estimated_gb * price_per_gb
+
+            estimate.add_component('Storage Account Base', 0.5, 'month', 'Account management fee')
+            estimate.add_component(
+                'Storage Cost',
+                storage_cost,
+                'month',
+                f"{estimated_gb} GB - {storage_pricing.get('product_name', f'{tier} {replication_type}')}"
+            )
+            estimate.add_note('✨ Real-time pricing from Azure Retail Prices API')
+            estimate.add_note(f'Price per GB: ${price_per_gb:.4f}/month')
+        else:
+            # Fallback to hardcoded pricing
+            return estimate_azure_storage_cost_fallback(parameters)
+
+    except Exception as e:
+        logger.error(f"Error fetching real-time storage pricing: {e}")
+        return estimate_azure_storage_cost_fallback(parameters)
+
+    estimate.add_note(f'Estimate based on {estimated_gb} GB of data')
+    estimate.add_note('Transaction costs and bandwidth charges apply separately')
+
+    return estimate
+
+
+def estimate_azure_storage_cost_fallback(parameters: Dict[str, Any]) -> CostEstimate:
+    """Fallback: Estimate cost for Azure Storage Account using hardcoded pricing"""
     estimate = CostEstimate()
 
     # Storage account has minimal base cost
@@ -344,11 +407,17 @@ def estimate_azure_storage_cost(parameters: Dict[str, Any]) -> CostEstimate:
     replication_type = parameters.get('account_replication_type', 'LRS')
     tier = parameters.get('account_tier', 'Standard')
 
-    storage_key = f"{replication_type}_{tier}"
+    # Build key as Tier_Replication (e.g., Premium_GRS, Standard_LRS)
+    storage_key = f"{tier}_{replication_type}"
     storage_cost_info = COST_DATABASE['azure_storage'].get(storage_key)
 
     if not storage_cost_info:
-        storage_cost_info = COST_DATABASE['azure_storage']['LRS_Standard']
+        # Try alternative key format
+        storage_key = f"{replication_type}_{tier}"
+        storage_cost_info = COST_DATABASE['azure_storage'].get(storage_key)
+
+    if not storage_cost_info:
+        storage_cost_info = {'cost_per_gb': 0.02, 'description': f'{tier} {replication_type} (estimated)'}
 
     # Estimate 100GB usage for example
     estimated_gb = 100
@@ -361,6 +430,7 @@ def estimate_azure_storage_cost(parameters: Dict[str, Any]) -> CostEstimate:
         f"{estimated_gb} GB - {storage_cost_info['description']}"
     )
 
+    estimate.add_note('Using estimated pricing (API data not available)')
     estimate.add_note(f'Estimate based on {estimated_gb} GB of data')
     estimate.add_note('Transaction costs and bandwidth charges apply separately')
 
@@ -425,7 +495,8 @@ async def estimate_deployment_cost(
             # Use GCP pricing (currently uses hardcoded with API structure ready)
             estimate = await estimate_gcp_vm_cost_realtime(parameters)
         elif 'storage-account' in template_name and 'azure' in provider_type:
-            estimate = estimate_azure_storage_cost(parameters)
+            # Use real-time Azure pricing for storage
+            estimate = await estimate_azure_storage_cost_realtime(parameters)
         elif 'storage-bucket' in template_name and 'gcp' in provider_type:
             estimate = estimate_gcp_storage_cost(parameters)
         else:
