@@ -15,6 +15,14 @@ function Dashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [providerFilter, setProviderFilter] = useState('all');
 
+  // Sync searchTerm with URL search params
+  useEffect(() => {
+    const urlSearch = searchParams.get('search') || '';
+    if (urlSearch !== searchTerm) {
+      setSearchTerm(urlSearch);
+    }
+  }, [searchParams]);
+
   const fetchDeployments = async () => {
     try {
       const response = await deploymentAPI.getAll();
