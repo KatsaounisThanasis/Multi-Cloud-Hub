@@ -80,7 +80,7 @@ function Register() {
             Create Account
           </h2>
           <p className="mt-2 text-sm text-gray-600">
-            Join Multi-Cloud Manager today
+            Join Multi Cloud Hub today
           </p>
         </div>
 

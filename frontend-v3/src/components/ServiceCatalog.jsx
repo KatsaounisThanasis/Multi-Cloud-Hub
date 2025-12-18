@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { templateAPI } from '../api/client';
 import { formatTemplateName as formatName, formatProviderName } from '../utils/formatters';
+import { getTemplateIcon, getTemplateGradient } from '../utils/templateIcons';
 
 // Template categories and icons
 const CATEGORIES = {
@@ -131,21 +132,6 @@ function ServiceCatalog({ onSelectTemplate }) {
       .trim();
   };
 
-  const getServiceIcon = (templateName) => {
-    // Return appropriate icon based on service type
-    if (templateName.includes('storage') || templateName.includes('bucket')) return '💾';
-    if (templateName.includes('vm') || templateName.includes('instance') || templateName.includes('compute')) return '💻';
-    if (templateName.includes('sql') || templateName.includes('database') || templateName.includes('cosmos')) return '🗄️';
-    if (templateName.includes('network') || templateName.includes('vpc') || templateName.includes('vnet')) return '🌐';
-    if (templateName.includes('function') || templateName.includes('app')) return '⚡';
-    if (templateName.includes('kubernetes') || templateName.includes('aks') || templateName.includes('gke')) return '☸️';
-    if (templateName.includes('key') || templateName.includes('secret')) return '🔐';
-    if (templateName.includes('cdn') || templateName.includes('cache')) return '🚀';
-    if (templateName.includes('queue') || templateName.includes('bus') || templateName.includes('pub')) return '📨';
-    if (templateName.includes('analytics') || templateName.includes('bigquery')) return '📊';
-    return '📦';
-  };
-
   const handleTemplateClick = (template) => {
     // Direct selection - no format selection needed (all Terraform)
     onSelectTemplate(template);
@@ -248,37 +234,47 @@ function ServiceCatalog({ onSelectTemplate }) {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {categoryTemplates.map((template) => (
-                    <div
-                      key={`${template.name}-${template.format}`}
-                      onClick={() => handleTemplateClick(template)}
-                      className="bg-white border-2 border-gray-200 rounded-xl p-5 hover:shadow-xl hover:border-blue-400 hover:-translate-y-1 transition-all duration-200 cursor-pointer group"
-                    >
-                      <div className="flex items-start space-x-3 mb-3">
-                        <div className="text-3xl flex-shrink-0 group-hover:scale-110 transition-transform">
-                          {getServiceIcon(template.name)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-bold text-gray-900 group-hover:text-blue-600 transition-colors text-base leading-tight">
-                            {formatName(template.name)}
-                          </h4>
-                          <div className="flex items-center mt-1 space-x-2">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                              {provider === 'azure' ? 'Azure' : 'GCP'}
-                            </span>
+                  {categoryTemplates.map((template) => {
+                    const gradient = getTemplateGradient(template.name);
+                    return (
+                      <div
+                        key={`${template.name}-${template.format}`}
+                        onClick={() => handleTemplateClick(template)}
+                        className="relative bg-white border border-gray-200 rounded-2xl p-5 hover:shadow-2xl hover:border-transparent hover:-translate-y-1 transition-all duration-300 cursor-pointer group overflow-hidden"
+                      >
+                        {/* Subtle gradient background on hover */}
+                        <div className={`absolute inset-0 bg-gradient-to-br ${gradient.bg} opacity-0 group-hover:opacity-100 transition-opacity duration-300`}></div>
+
+                        <div className="relative flex items-start space-x-4">
+                          <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${gradient.from} ${gradient.to} flex items-center justify-center text-white shadow-lg ${gradient.shadow} group-hover:scale-110 transition-transform duration-300`}>
+                            {getTemplateIcon(template.name)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-bold text-gray-900 group-hover:text-gray-800 transition-colors text-base leading-tight mb-1">
+                              {formatName(template.name)}
+                            </h4>
+                            <div className="flex items-center space-x-2">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                                provider === 'azure'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-green-100 text-green-700'
+                              }`}>
+                                {provider === 'azure' ? 'Azure' : 'GCP'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className={`text-transparent bg-gradient-to-r ${gradient.from} ${gradient.to} bg-clip-text opacity-0 group-hover:opacity-100 transition-opacity text-xl font-bold`}>
+                            →
                           </div>
                         </div>
-                        <div className="text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity text-xl">
-                          →
-                        </div>
+                        {template.description && cleanDescription(template.description) && (
+                          <p className="relative mt-3 text-sm text-gray-600 line-clamp-2 leading-relaxed">
+                            {cleanDescription(template.description)}
+                          </p>
+                        )}
                       </div>
-                      {template.description && cleanDescription(template.description) && (
-                        <p className="text-sm text-gray-600 line-clamp-2 leading-relaxed">
-                          {cleanDescription(template.description)}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             );

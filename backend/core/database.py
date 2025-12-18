@@ -150,6 +150,75 @@ def init_db():
     Base.metadata.create_all(bind=engine)
 
 
+class CloudAccount(Base):
+    """
+    Cloud Account model for managing multiple Azure subscriptions / GCP projects
+    """
+    __tablename__ = "cloud_accounts"
+
+    id = Column(String(50), primary_key=True, index=True)
+    name = Column(String(200), nullable=False)  # Friendly name
+    provider = Column(String(20), nullable=False, index=True)  # 'azure' or 'gcp'
+
+    # Azure fields
+    subscription_id = Column(String(100), nullable=True)
+    tenant_id = Column(String(100), nullable=True)
+    client_id = Column(String(100), nullable=True)
+    client_secret = Column(String(500), nullable=True)  # Encrypted in production
+
+    # GCP fields
+    project_id = Column(String(100), nullable=True)
+    region = Column(String(50), nullable=True)
+
+    # Metadata
+    is_active = Column(String(10), default='true')
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_by = Column(String(200), nullable=True)  # Admin email
+
+    def to_dict(self, include_secrets=False):
+        """Convert to dictionary for API responses"""
+        data = {
+            "id": self.id,
+            "name": self.name,
+            "provider": self.provider,
+            "subscription_id": self.subscription_id,
+            "tenant_id": self.tenant_id,
+            "client_id": self.client_id,
+            "project_id": self.project_id,
+            "region": self.region,
+            "is_active": self.is_active == 'true',
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "created_by": self.created_by
+        }
+        if include_secrets:
+            data["client_secret"] = self.client_secret
+        return data
+
+
+class UserCloudPermission(Base):
+    """
+    User permissions for cloud accounts
+    """
+    __tablename__ = "user_cloud_permissions"
+
+    id = Column(String(50), primary_key=True, index=True)
+    user_email = Column(String(200), nullable=False, index=True)
+    cloud_account_id = Column(String(50), nullable=False, index=True)
+    can_deploy = Column(String(10), default='true')  # Can create deployments
+    can_view = Column(String(10), default='true')    # Can view deployments
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "user_email": self.user_email,
+            "cloud_account_id": self.cloud_account_id,
+            "can_deploy": self.can_deploy == 'true',
+            "can_view": self.can_view == 'true',
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
 def drop_all():
     """Drop all tables (use with caution!)"""
     Base.metadata.drop_all(bind=engine)

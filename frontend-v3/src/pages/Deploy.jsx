@@ -7,6 +7,7 @@ import Breadcrumbs from '../components/Breadcrumbs';
 import LoadingState from '../components/LoadingState';
 import { formatTemplateName, formatProviderName } from '../utils/formatters';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -15,10 +16,16 @@ function Deploy() {
   const navigate = useNavigate();
   const { provider, template } = useParams();
   const { addToast } = useToast();
+  const { token } = useAuth();
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [deploying, setDeploying] = useState(false);
   const [deploymentId, setDeploymentId] = useState(null);
   const [error, setError] = useState(null);
+
+  // Cloud accounts state
+  const [availableAccounts, setAvailableAccounts] = useState([]);
+  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [loadingAccounts, setLoadingAccounts] = useState(false);
 
   // Handle deep linking
   useEffect(() => {
@@ -31,6 +38,45 @@ function Deploy() {
       });
     }
   }, [provider, template]);
+
+  // Fetch available cloud accounts when template is selected
+  useEffect(() => {
+    if (selectedTemplate?.cloud_provider && token) {
+      fetchAvailableAccounts(selectedTemplate.cloud_provider);
+    }
+  }, [selectedTemplate?.cloud_provider, token]);
+
+  const fetchAvailableAccounts = async (cloudProvider) => {
+    setLoadingAccounts(true);
+    try {
+      const response = await axios.get(`${API_BASE_URL}/cloud-accounts/user/permissions`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        // Filter accounts by provider and can_deploy permission
+        const permissions = response.data.data.permissions || [];
+        const deployableAccounts = permissions
+          .filter(p => p.account.provider === cloudProvider && p.can_deploy)
+          .map(p => p.account);
+
+        setAvailableAccounts(deployableAccounts);
+
+        // Auto-select if only one account
+        if (deployableAccounts.length === 1) {
+          setSelectedAccount(deployableAccounts[0]);
+        } else {
+          setSelectedAccount(null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch cloud accounts:', err);
+      // Not critical - user can still deploy using env credentials
+      setAvailableAccounts([]);
+    } finally {
+      setLoadingAccounts(false);
+    }
+  };
 
   // Clean template description - remove separator lines
   const cleanDescription = (description) => {
@@ -118,23 +164,37 @@ function Deploy() {
         coreResourceGroup = 'default';
       }
 
-      // Check for custom credentials from settings
-      const savedSettings = sessionStorage.getItem('cloudCredentials') || localStorage.getItem('cloudCredentials');
+      // Determine subscription/project ID to use
       let customSubscriptionId = null;
 
-      if (savedSettings) {
-        try {
-          const settings = JSON.parse(savedSettings);
+      // Priority 1: Use selected cloud account from database
+      if (selectedAccount) {
+        if (providerType.includes('azure') && selectedAccount.subscription_id) {
+          customSubscriptionId = selectedAccount.subscription_id;
+          console.log('[Deploy] Using Azure subscription from cloud account:', selectedAccount.name);
+        } else if (providerType.includes('gcp') && selectedAccount.project_id) {
+          customSubscriptionId = selectedAccount.project_id;
+          console.log('[Deploy] Using GCP project from cloud account:', selectedAccount.name);
+        }
+      }
 
-          if (providerType.includes('azure') && settings.azure?.mode === 'custom') {
-            customSubscriptionId = settings.azure.subscriptionId;
-            console.log('[Deploy] Using custom Azure subscription from settings');
-          } else if (providerType.includes('gcp') && settings.gcp?.mode === 'custom') {
-            customSubscriptionId = settings.gcp.projectId;
-            console.log('[Deploy] Using custom GCP project from settings');
+      // Priority 2: Check for custom credentials from settings (legacy)
+      if (!customSubscriptionId) {
+        const savedSettings = sessionStorage.getItem('cloudCredentials') || localStorage.getItem('cloudCredentials');
+        if (savedSettings) {
+          try {
+            const settings = JSON.parse(savedSettings);
+
+            if (providerType.includes('azure') && settings.azure?.mode === 'custom') {
+              customSubscriptionId = settings.azure.subscriptionId;
+              console.log('[Deploy] Using custom Azure subscription from settings');
+            } else if (providerType.includes('gcp') && settings.gcp?.mode === 'custom') {
+              customSubscriptionId = settings.gcp.projectId;
+              console.log('[Deploy] Using custom GCP project from settings');
+            }
+          } catch (err) {
+            console.error('[Deploy] Failed to parse saved settings:', err);
           }
-        } catch (err) {
-          console.error('[Deploy] Failed to parse saved settings:', err);
         }
       }
 
@@ -233,16 +293,27 @@ function Deploy() {
                   ? `Deploy ${formatTemplateName(selectedTemplate.name)} to ${formatProviderName(selectedTemplate.cloud_provider)}`
                   : 'Select a template from the service catalog below'}
               </p>
-              {/* Credentials indicator */}
-              {credInfo && (
-                <div className="mt-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
-                  <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Using {credInfo.type} {credInfo.provider} credentials ({credInfo.id})
+              {/* Cloud Account Indicator */}
+              {selectedTemplate && availableAccounts.length > 0 && (
+                <div className="mt-3 flex items-center space-x-3">
+                  {selectedAccount ? (
+                    <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200">
+                      <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                      </svg>
+                      {selectedAccount.name}
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 border border-amber-200">
+                      <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      Select a cloud account below
+                    </div>
+                  )}
                 </div>
               )}
-              {!credInfo && selectedTemplate && (
+              {selectedTemplate && availableAccounts.length === 0 && !loadingAccounts && (
                 <div className="mt-3 inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-700 border border-gray-200">
                   <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
@@ -311,6 +382,77 @@ function Deploy() {
                     )}
                   </div>
                 </div>
+
+                {/* Cloud Account Selector */}
+                {availableAccounts.length > 0 && (
+                  <div className="mt-6 pt-4 border-t border-blue-100">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Deploy to Cloud Account
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      {availableAccounts.map((account) => (
+                        <button
+                          key={account.id}
+                          type="button"
+                          onClick={() => setSelectedAccount(account)}
+                          className={`p-4 rounded-xl border-2 text-left transition-all ${
+                            selectedAccount?.id === account.id
+                              ? 'border-blue-500 bg-blue-50 shadow-lg shadow-blue-500/20'
+                              : 'border-gray-200 bg-white hover:border-blue-300 hover:shadow-md'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                              account.provider === 'azure'
+                                ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                                : 'bg-gradient-to-br from-red-500 to-orange-500'
+                            }`}>
+                              {account.provider === 'azure' ? (
+                                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M13.05 4.24l-3.04 8.54 6.18 6.98L3.56 19.76h15.88l-6.39-15.52zM3.87 18.92l6.18-7.02-3.04-8.52L3.87 18.92z"/>
+                                </svg>
+                              ) : (
+                                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12 0c-3.87 0-7.5 1.87-9.77 5.02a.75.75 0 00.76 1.15l8.76-1.54a.75.75 0 00.25-.09l.23-.14a.75.75 0 01.54-.15l9.02 1.59a.75.75 0 00.76-1.15A11.99 11.99 0 0012 0z"/>
+                                </svg>
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-gray-900 truncate">{account.name}</p>
+                              <p className="text-xs text-gray-500 font-mono truncate">
+                                {account.provider === 'azure'
+                                  ? account.subscription_id?.slice(0, 8) + '...'
+                                  : account.project_id}
+                              </p>
+                            </div>
+                            {selectedAccount?.id === account.id && (
+                              <svg className="w-5 h-5 text-blue-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                              </svg>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    {availableAccounts.length > 1 && !selectedAccount && (
+                      <p className="mt-2 text-sm text-amber-600">
+                        Please select a cloud account to deploy to
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {loadingAccounts && (
+                  <div className="mt-6 pt-4 border-t border-blue-100">
+                    <div className="flex items-center text-sm text-gray-500">
+                      <svg className="animate-spin h-4 w-4 mr-2 text-blue-500" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Loading cloud accounts...
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Deployment Wizard or Log Stream */}

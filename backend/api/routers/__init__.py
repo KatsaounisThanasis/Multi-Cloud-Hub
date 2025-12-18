@@ -18,6 +18,7 @@ from .deployments import router as deployments_router
 from .azure import router as azure_router
 from .gcp import router as gcp_router
 from .resource_groups import router as resource_groups_router
+from .cloud_accounts import router as cloud_accounts_router
 
 __all__ = [
     'auth_router',
@@ -26,5 +27,6 @@ __all__ = [
     'deployments_router',
     'azure_router',
     'gcp_router',
-    'resource_groups_router'
+    'resource_groups_router',
+    'cloud_accounts_router'
 ]

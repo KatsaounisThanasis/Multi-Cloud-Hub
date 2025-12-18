@@ -40,7 +40,8 @@ from backend.api.routers import (
     deployments_router,
     azure_router,
     gcp_router,
-    resource_groups_router
+    resource_groups_router,
+    cloud_accounts_router
 )
 
 # Configure logging
@@ -226,6 +227,9 @@ app.include_router(gcp_router)
 
 # Resource group routes
 app.include_router(resource_groups_router)
+
+# Cloud accounts routes
+app.include_router(cloud_accounts_router)
 
 
 # ================================================================

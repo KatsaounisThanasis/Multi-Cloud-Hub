@@ -65,7 +65,7 @@ function Login() {
             </div>
           </div>
           <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Multi-Cloud Manager
+            Multi Cloud Hub
           </h2>
           <p className="mt-2 text-sm text-gray-600">
             Sign in to manage your infrastructure

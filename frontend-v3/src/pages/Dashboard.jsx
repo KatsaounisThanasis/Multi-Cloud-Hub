@@ -5,6 +5,7 @@ import Tooltip from '../components/Tooltip';
 import { SkeletonCard } from '../components/Skeleton';
 import EmptyState from '../components/EmptyState';
 import { formatTemplateName, getStatusColor, formatProviderType } from '../utils/formatters';
+import { getTemplateIcon, getTemplateGradient } from '../utils/templateIcons';
 
 function Dashboard() {
   const [searchParams] = useSearchParams();
@@ -348,90 +349,131 @@ function Dashboard() {
       {/* Deployments Grid */}
       {deployments.length === 0 && !error ? (
         <div className="mt-8 space-y-8">
-          {/* Hero Empty State */}
-          <div className="text-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 rounded-2xl shadow-lg p-12 border border-blue-100">
-            <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg mb-6 animate-pulse">
-              <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
-              </svg>
-            </div>
-            <h3 className="text-3xl font-bold text-gray-900 mb-3">Welcome to Multi-Cloud Manager</h3>
-            <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-              Deploy and manage infrastructure across Azure and Google Cloud Platform with ease.
-              Get started by choosing a template below or create a custom deployment.
-            </p>
-            <div className="flex gap-4 justify-center">
-              <Link
-                to="/deploy"
-                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white text-base font-bold rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 transition-all duration-200"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          {/* Hero Empty State - Modern Glassmorphism */}
+          <div className="relative overflow-hidden text-center rounded-3xl p-12 border border-white/20 animate-slide-up">
+            {/* Background gradient */}
+            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 opacity-10"></div>
+            <div className="absolute inset-0 bg-white/60 backdrop-blur-xl"></div>
+
+            {/* Floating decorative elements */}
+            <div className="absolute top-10 left-10 w-20 h-20 bg-gradient-to-br from-blue-400 to-purple-400 rounded-full opacity-20 blur-xl animate-float"></div>
+            <div className="absolute bottom-10 right-10 w-32 h-32 bg-gradient-to-br from-pink-400 to-orange-400 rounded-full opacity-20 blur-xl animate-float" style={{animationDelay: '1s'}}></div>
+
+            <div className="relative z-10">
+              <div className="mx-auto w-28 h-28 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl flex items-center justify-center shadow-2xl shadow-purple-500/30 mb-8 animate-float">
+                <svg className="w-14 h-14 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
                 </svg>
-                Create Your First Deployment
-              </Link>
-              <button
-                onClick={() => window.open('https://docs.claude.com', '_blank')}
-                className="inline-flex items-center px-6 py-4 bg-white text-gray-700 text-base font-semibold rounded-xl border-2 border-gray-300 hover:border-blue-500 hover:text-blue-600 transition-all duration-200"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                </svg>
-                View Documentation
-              </button>
+              </div>
+              <h3 className="text-4xl font-extrabold mb-4 gradient-text">Welcome to Multi Cloud Hub</h3>
+              <p className="text-xl text-gray-600 mb-10 max-w-2xl mx-auto leading-relaxed">
+                Deploy and manage infrastructure across <span className="font-semibold text-blue-600">Azure</span> and <span className="font-semibold text-green-600">Google Cloud</span> with ease.
+              </p>
+              <div className="flex gap-4 justify-center flex-wrap">
+                <Link
+                  to="/deploy"
+                  className="btn-primary inline-flex items-center text-lg"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create Your First Deployment
+                </Link>
+                <Link
+                  to="/deploy"
+                  className="btn-secondary inline-flex items-center text-lg"
+                >
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+                  </svg>
+                  Browse Templates
+                </Link>
+              </div>
             </div>
           </div>
 
           {/* Popular Starter Templates */}
-          <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-8">
-            <div className="mb-6">
+          <div className="glass-card rounded-3xl p-8 animate-slide-up" style={{animationDelay: '0.2s'}}>
+            <div className="mb-8">
               <h4 className="text-2xl font-bold text-gray-900 mb-2">Popular Starter Templates</h4>
-              <p className="text-gray-600">Quick-start your infrastructure with these commonly used templates</p>
+              <p className="text-gray-500">Quick-start your infrastructure with these commonly used templates</p>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Azure VM */}
-              <Link
-                to="/deploy"
-                className="group bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border-2 border-blue-200 hover:border-blue-500 hover:shadow-xl transition-all duration-200 cursor-pointer"
-              >
-                <div className="text-4xl mb-4">☁️</div>
-                <h5 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600">Azure Virtual Machine</h5>
-                <p className="text-sm text-gray-600 mb-4">Deploy a Windows or Linux VM with networking</p>
-                <span className="text-xs font-semibold text-blue-600">Azure • Bicep</span>
-              </Link>
+              {(() => {
+                const vmGradient = getTemplateGradient('virtual-machine');
+                return (
+                  <Link
+                    to="/deploy"
+                    className="group relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer"
+                  >
+                    <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${vmGradient.from} ${vmGradient.to} opacity-10 rounded-bl-full`}></div>
+                    <div className={`w-14 h-14 bg-gradient-to-br ${vmGradient.from} ${vmGradient.to} rounded-2xl flex items-center justify-center shadow-lg ${vmGradient.shadow} mb-4 group-hover:scale-110 transition-transform text-white`}>
+                      {getTemplateIcon('virtual-machine')}
+                    </div>
+                    <h5 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">Azure Virtual Machine</h5>
+                    <p className="text-sm text-gray-500 mb-4">Deploy a Windows or Linux VM with networking</p>
+                    <span className="badge badge-info">Azure • Terraform</span>
+                  </Link>
+                );
+              })()}
 
               {/* GCP Compute */}
-              <Link
-                to="/deploy"
-                className="group bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border-2 border-green-200 hover:border-green-500 hover:shadow-xl transition-all duration-200 cursor-pointer"
-              >
-                <div className="text-4xl mb-4">🌐</div>
-                <h5 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-green-600">GCP Compute Instance</h5>
-                <p className="text-sm text-gray-600 mb-4">Create a GCE instance with firewall rules</p>
-                <span className="text-xs font-semibold text-green-600">GCP • Terraform</span>
-              </Link>
+              {(() => {
+                const computeGradient = getTemplateGradient('compute-instance');
+                return (
+                  <Link
+                    to="/deploy"
+                    className="group relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer"
+                  >
+                    <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${computeGradient.from} ${computeGradient.to} opacity-10 rounded-bl-full`}></div>
+                    <div className={`w-14 h-14 bg-gradient-to-br ${computeGradient.from} ${computeGradient.to} rounded-2xl flex items-center justify-center shadow-lg ${computeGradient.shadow} mb-4 group-hover:scale-110 transition-transform text-white`}>
+                      {getTemplateIcon('compute-instance')}
+                    </div>
+                    <h5 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">GCP Compute Instance</h5>
+                    <p className="text-sm text-gray-500 mb-4">Create a GCE instance with firewall rules</p>
+                    <span className="badge badge-success">GCP • Terraform</span>
+                  </Link>
+                );
+              })()}
 
               {/* Azure Storage */}
-              <Link
-                to="/deploy"
-                className="group bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-6 border-2 border-purple-200 hover:border-purple-500 hover:shadow-xl transition-all duration-200 cursor-pointer"
-              >
-                <div className="text-4xl mb-4">💾</div>
-                <h5 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-purple-600">Azure Storage Account</h5>
-                <p className="text-sm text-gray-600 mb-4">Blob storage with containers and access policies</p>
-                <span className="text-xs font-semibold text-purple-600">Azure • Bicep</span>
-              </Link>
+              {(() => {
+                const storageGradient = getTemplateGradient('storage-account');
+                return (
+                  <Link
+                    to="/deploy"
+                    className="group relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer"
+                  >
+                    <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${storageGradient.from} ${storageGradient.to} opacity-10 rounded-bl-full`}></div>
+                    <div className={`w-14 h-14 bg-gradient-to-br ${storageGradient.from} ${storageGradient.to} rounded-2xl flex items-center justify-center shadow-lg ${storageGradient.shadow} mb-4 group-hover:scale-110 transition-transform text-white`}>
+                      {getTemplateIcon('storage-account')}
+                    </div>
+                    <h5 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">Azure Storage Account</h5>
+                    <p className="text-sm text-gray-500 mb-4">Blob storage with containers and access policies</p>
+                    <span className="badge badge-info">Azure • Terraform</span>
+                  </Link>
+                );
+              })()}
 
               {/* GCP Cloud Run */}
-              <Link
-                to="/deploy"
-                className="group bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-6 border-2 border-orange-200 hover:border-orange-500 hover:shadow-xl transition-all duration-200 cursor-pointer"
-              >
-                <div className="text-4xl mb-4">🚀</div>
-                <h5 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-orange-600">GCP Cloud Run</h5>
-                <p className="text-sm text-gray-600 mb-4">Serverless container deployment with autoscaling</p>
-                <span className="text-xs font-semibold text-orange-600">GCP • Terraform</span>
-              </Link>
+              {(() => {
+                const cloudRunGradient = getTemplateGradient('cloud-run');
+                return (
+                  <Link
+                    to="/deploy"
+                    className="group relative overflow-hidden bg-white rounded-2xl p-6 border border-gray-100 shadow-lg hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 cursor-pointer"
+                  >
+                    <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${cloudRunGradient.from} ${cloudRunGradient.to} opacity-10 rounded-bl-full`}></div>
+                    <div className={`w-14 h-14 bg-gradient-to-br ${cloudRunGradient.from} ${cloudRunGradient.to} rounded-2xl flex items-center justify-center shadow-lg ${cloudRunGradient.shadow} mb-4 group-hover:scale-110 transition-transform text-white`}>
+                      {getTemplateIcon('cloud-run')}
+                    </div>
+                    <h5 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">GCP Cloud Run</h5>
+                    <p className="text-sm text-gray-500 mb-4">Serverless container deployment with autoscaling</p>
+                    <span className="badge badge-warning">GCP • Terraform</span>
+                  </Link>
+                );
+              })()}
             </div>
           </div>
 

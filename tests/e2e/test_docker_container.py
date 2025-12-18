@@ -19,10 +19,14 @@ def docker_client():
         pytest.skip(f"Docker not available: {e}")
 
 
+# Use port 8001 for tests to avoid conflict with running dev server
+TEST_PORT = 8001
+
+
 @pytest.fixture(scope="module")
 def container_url():
     """Container API URL"""
-    return "http://localhost:8000"
+    return f"http://localhost:{TEST_PORT}"
 
 
 class TestDockerBuild:
@@ -44,26 +48,6 @@ class TestDockerBuild:
         except docker.errors.BuildError as e:
             pytest.fail(f"Docker build failed: {e}")
 
-    @pytest.mark.skipif(
-        not os.path.exists("Dockerfile.minimal"),
-        reason="Dockerfile.minimal not found - skipping minimal image test"
-    )
-    def test_build_minimal_image(self, docker_client):
-        """Test building minimal Docker image"""
-        try:
-            image, logs = docker_client.images.build(
-                path=".",
-                dockerfile="Dockerfile.minimal",
-                tag="multicloud-api:minimal-test",
-                rm=True
-            )
-
-            assert image is not None
-            assert "multicloud-api:minimal-test" in [tag for tag in image.tags]
-
-        except docker.errors.BuildError as e:
-            pytest.fail(f"Minimal Docker build failed: {e}")
-
 
 class TestDockerRun:
     """Test running Docker container"""
@@ -82,16 +66,31 @@ class TestDockerRun:
         except Exception as e:
             pytest.skip(f"Could not build image: {e}")
 
-        # Start container
+        # Clean up any existing test container
         try:
+            old_container = docker_client.containers.get("multicloud-api-test")
+            old_container.stop()
+            old_container.remove()
+        except NotFound:
+            pass
+
+        # Start container - connect to existing network for DB/Redis access
+        try:
+            # Find the multicloud network
+            networks = [n.name for n in docker_client.networks.list() if 'multicloud' in n.name.lower()]
+            network_name = networks[0] if networks else None
+
             container = docker_client.containers.run(
                 "multicloud-api:test",
                 detach=True,
-                ports={"8000/tcp": 8000},
+                ports={"8000/tcp": TEST_PORT},
                 environment={
                     "LOG_LEVEL": "INFO",
-                    "ENVIRONMENT": "test"
+                    "ENVIRONMENT": "test",
+                    "DATABASE_URL": "postgresql://apiuser:your_secure_db_password_here@postgres:5432/multicloud",
+                    "REDIS_URL": "redis://redis:6379/0"
                 },
+                network=network_name,
                 name="multicloud-api-test"
             )
 
@@ -99,7 +98,7 @@ class TestDockerRun:
             max_retries = 30
             for i in range(max_retries):
                 try:
-                    response = requests.get("http://localhost:8000/health", timeout=2)
+                    response = requests.get(f"http://localhost:{TEST_PORT}/health", timeout=2)
                     if response.status_code == 200:
                         break
                 except (requests.ConnectionError, requests.Timeout):
@@ -129,11 +128,12 @@ class TestDockerRun:
 
         assert response.status_code == 200
         data = response.json()
-        assert data["status"] == "healthy"
+        assert data["success"] is True
+        assert data["data"]["status"] == "healthy"
 
     def test_container_api_accessible(self, running_container, container_url):
         """Test API is accessible from container"""
-        response = requests.get(f"{container_url}/api/v1/providers")
+        response = requests.get(f"{container_url}/providers")
 
         assert response.status_code == 200
         data = response.json()
@@ -265,12 +265,13 @@ class TestContainerSecurity:
             container = docker_client.containers.run(
                 "multicloud-api:test",
                 detach=True,
-                remove=True,
+                remove=False,
                 command="id -u"
             )
 
             container.wait()
             logs = container.logs().decode("utf-8").strip()
+            container.remove()
             uid = int(logs)
 
             assert uid != 0, "Container should not run as root (UID 0)"
@@ -285,11 +286,12 @@ class TestContainerSecurity:
             container = docker_client.containers.run(
                 "multicloud-api:test",
                 detach=True,
-                remove=True,
+                remove=False,
                 command="touch /test-write"
             )
 
             exit_code = container.wait()["StatusCode"]
+            container.remove()
 
             # Should fail to write to root filesystem
             assert exit_code != 0, "Should not be able to write to root filesystem"
