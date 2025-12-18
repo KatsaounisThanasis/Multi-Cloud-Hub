@@ -52,24 +52,38 @@ def parse_structured_log(log_line: str) -> dict:
     return {'timestamp': datetime.utcnow().isoformat(), 'level': 'INFO', 'phase': 'unknown', 'message': log_line, 'details': None}
 
 
+def _get_subscription_id(request: DeploymentRequest) -> str:
+    """
+    Resolve subscription ID from request or environment variables.
+    
+    Raises:
+        MissingParameterError: If subscription ID cannot be determined.
+    """
+    if request.subscription_id:
+        return request.subscription_id
+
+    subscription_id = None
+    if request.provider_type in ['terraform-azure', 'azure', 'bicep']:
+        subscription_id = os.getenv('AZURE_SUBSCRIPTION_ID')
+    elif request.provider_type in ['terraform-gcp', 'gcp']:
+        subscription_id = os.getenv('GOOGLE_PROJECT_ID')
+
+    if not subscription_id:
+        raise MissingParameterError("subscription_id")
+    
+    return subscription_id
+
+
 @router.post("/deploy", summary="Deploy Infrastructure", response_model=StandardResponse, status_code=status.HTTP_202_ACCEPTED)
 async def deploy_infrastructure(request: DeploymentRequest, db: Session = Depends(get_db)):
     """Deploy infrastructure using the specified template and provider."""
     try:
         tm = get_template_manager()
+        
+        # 1. Resolve Configuration
+        subscription_id = _get_subscription_id(request)
 
-        # Get subscription_id from env if not provided
-        subscription_id = request.subscription_id
-        if not subscription_id:
-            if request.provider_type in ['terraform-azure', 'azure', 'bicep']:
-                subscription_id = os.getenv('AZURE_SUBSCRIPTION_ID')
-            elif request.provider_type in ['terraform-gcp', 'gcp']:
-                subscription_id = os.getenv('GOOGLE_PROJECT_ID')
-
-            if not subscription_id:
-                raise MissingParameterError("subscription_id")
-
-        # Validate request
+        # 2. Validate Request & Parameters
         is_valid, error_msg = DeploymentRequestValidator.validate_deployment_request(
             provider_type=request.provider_type,
             template_name=request.template_name,
@@ -80,15 +94,13 @@ async def deploy_infrastructure(request: DeploymentRequest, db: Session = Depend
         if not is_valid:
             raise ValidationError("deployment_request", error_msg)
 
-        # Security validation
         is_valid, error_msg = validate_deployment_parameters(request.parameters)
         if not is_valid:
             raise ValidationError("parameters", error_msg)
 
-        # Provider-specific validation
         _validate_provider_specific_params(request.provider_type, request.parameters)
 
-        # Get template
+        # 3. Resolve Template
         template_path = tm.get_template_path(request.template_name, request.provider_type)
         if not template_path:
             raise TemplateNotFoundError(request.template_name, request.provider_type)
@@ -96,7 +108,7 @@ async def deploy_infrastructure(request: DeploymentRequest, db: Session = Depend
         template_meta = tm.get_template(request.template_name, request.provider_type)
         cloud_provider = template_meta.cloud_provider.value if template_meta else "unknown"
 
-        # Create deployment record
+        # 4. Create Database Record
         deployment_id = f"deploy-{uuid.uuid4().hex[:12]}"
         deployment = Deployment(
             deployment_id=deployment_id,
@@ -113,12 +125,12 @@ async def deploy_infrastructure(request: DeploymentRequest, db: Session = Depend
 
         logger.info(f"Created deployment {deployment_id} (params: {mask_sensitive_data(request.parameters)})")
 
-        # Queue Celery task
-        provider_config = {"subscription_id": subscription_id, "region": request.location}
-        if request.provider_type in ("gcp", "terraform-gcp"):
-            provider_config["cloud_platform"] = "gcp"
-        elif request.provider_type in ("terraform-azure",):
-            provider_config["cloud_platform"] = "azure"
+        # 5. Queue Background Task
+        provider_config = {
+            "subscription_id": subscription_id, 
+            "region": request.location,
+            "cloud_platform": "gcp" if request.provider_type in ("gcp", "terraform-gcp") else "azure"
+        }
 
         task = deploy_task.delay(
             deployment_id=deployment_id,
@@ -150,6 +162,8 @@ async def deploy_infrastructure(request: DeploymentRequest, db: Session = Depend
 
 def _validate_provider_specific_params(provider_type: str, parameters: dict):
     """Validate provider-specific parameters."""
+    from backend.utils.validators import validate_app_name, validate_gcp_bucket_name
+
     if 'azure' in provider_type.lower():
         if parameters.get('storage_account_name'):
             ParameterValidator.validate_azure_storage_account_name(parameters['storage_account_name'])
@@ -158,7 +172,6 @@ def _validate_provider_specific_params(provider_type: str, parameters: dict):
 
     elif 'gcp' in provider_type.lower():
         if parameters.get('bucket_name'):
-            from backend.utils.validators import validate_gcp_bucket_name
             validate_gcp_bucket_name(parameters['bucket_name'])
         if parameters.get('instance_name'):
             ParameterValidator.validate_gcp_resource_name(parameters['instance_name'], 'instance_name')
@@ -166,6 +179,10 @@ def _validate_provider_specific_params(provider_type: str, parameters: dict):
             ParameterValidator.validate_gcp_project_id(parameters['project_id'])
 
     # Common validations
+    if parameters.get('app_name'):
+        validate_app_name(parameters['app_name'], 'app_name')
+    if parameters.get('name'):
+        validate_app_name(parameters['name'], 'name')
     if parameters.get('cidr_block'):
         ParameterValidator.validate_cidr(parameters['cidr_block'])
     if parameters.get('ip_address'):
