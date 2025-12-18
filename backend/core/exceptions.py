@@ -60,7 +60,7 @@ class InvalidParameterError(MultiCloudException):
     """Raised when template parameters are invalid."""
     def __init__(self, parameter_name: str, reason: str):
         super().__init__(
-            message=f"Invalid parameter '{parameter_name}'",
+            message=f"Invalid parameter '{parameter_name}': {reason}",
             code="INVALID_PARAMETER",
             details=reason,
             status_code=400

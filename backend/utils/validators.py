@@ -317,3 +317,48 @@ def validate_gcp_bucket_name(name: str) -> None:
     """
     ParameterValidator.validate_string_length(name, 'bucket_name', 3, 63)
     ParameterValidator.validate_gcp_resource_name(name, 'bucket_name')
+
+
+def validate_app_name(name: str, param_name: str = 'app_name') -> None:
+    """
+    Validate application/deployment name.
+
+    Rules:
+    - 1-64 characters
+    - Alphanumerics, hyphens, underscores only
+    - Must start with a letter
+    - Cannot end with hyphen or underscore
+    - Cannot be a reserved word
+
+    Raises:
+        InvalidParameterError: If validation fails
+    """
+    if not name:
+        raise MissingParameterError(param_name)
+
+    # Reserved words to avoid conflicts or ambiguity
+    RESERVED_WORDS = {
+        'admin', 'administrator', 'root', 'system', 'user', 'test', 'demo', 
+        'backup', 'restore', 'api', 'db', 'database', 'app', 'application', 
+        'server', 'client', 'null', 'none', 'default', 'config', 'setup'
+    }
+
+    if name.lower() in RESERVED_WORDS:
+        raise InvalidParameterError(param_name, f"'{name}' is a reserved word and cannot be used")
+
+    ParameterValidator.validate_string_length(name, param_name, 1, 64)
+
+    # Must start with letter
+    if not name[0].isalpha():
+        raise InvalidParameterError(param_name, "Must start with a letter")
+
+    # Cannot end with hyphen or underscore
+    if name[-1] in '-_':
+        raise InvalidParameterError(param_name, "Cannot end with hyphen or underscore")
+
+    # Only alphanumerics, hyphens, underscores
+    if not re.match(r'^[a-zA-Z][a-zA-Z0-9\-_]*[a-zA-Z0-9]$|^[a-zA-Z]$', name):
+        raise InvalidParameterError(
+            param_name,
+            "Only letters, numbers, hyphens, and underscores allowed"
+        )
