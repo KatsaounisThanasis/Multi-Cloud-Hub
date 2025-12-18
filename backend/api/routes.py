@@ -159,9 +159,39 @@ template_manager = TemplateManager(TEMPLATES_DIR)
 # Startup Event
 # ================================================================
 
+def validate_environment():
+    """Validate required environment variables for production"""
+    env = os.getenv("ENVIRONMENT", "development")
+    warnings = []
+
+    # Check JWT secret
+    if not os.getenv("JWT_SECRET_KEY"):
+        if env == "production":
+            raise RuntimeError("JWT_SECRET_KEY is required in production mode")
+        warnings.append("JWT_SECRET_KEY not set - using random key (sessions won't persist)")
+
+    # Check database
+    if not os.getenv("DATABASE_URL"):
+        warnings.append("DATABASE_URL not set - using default")
+
+    # Check CORS in production
+    cors_origins = os.getenv("CORS_ORIGINS", "*")
+    if env == "production" and cors_origins == "*":
+        warnings.append("CORS_ORIGINS is set to '*' - consider restricting for production")
+
+    # Log warnings
+    for warning in warnings:
+        logger.warning(f"⚠️  {warning}")
+
+    return len(warnings) == 0
+
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize database tables and log startup info"""
+    # Validate environment
+    validate_environment()
+
     init_db()
     logger.info("Database initialized")
     logger.info(f"API v3.0.0 starting in {security_config.environment} mode")

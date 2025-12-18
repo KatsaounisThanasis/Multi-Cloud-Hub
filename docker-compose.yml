@@ -12,8 +12,12 @@ services:
       - "8000:8000"
     environment:
       # API Configuration
-      - LOG_LEVEL=INFO
-      - ENVIRONMENT=development
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+
+      # Security
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:5173,http://localhost:5174}
 
       # Database and Redis
       - DATABASE_URL=postgresql://apiuser:${DB_PASSWORD:-changeme}@postgres:5432/multicloud
@@ -39,7 +43,8 @@ services:
       # Mount GCP credentials (if using service account)
       - ${GCP_CREDENTIALS_PATH:-./credentials}:/app/credentials:ro
 
-      # Development: Mount code for hot reload
+      # Development only: Mount code for hot reload
+      # REMOVE THIS LINE FOR PRODUCTION:
       - ./backend:/app/backend
 
     # Restart policy
@@ -130,7 +135,8 @@ services:
       - ./logs:/app/logs
       - ./templates:/app/templates
       - ${GCP_CREDENTIALS_PATH:-./credentials}:/app/credentials:ro
-      # Development: Mount code for hot reload
+      # Development only: Mount code for hot reload
+      # REMOVE THIS LINE FOR PRODUCTION:
       - ./backend:/app/backend
     networks:
       - multicloud-network
