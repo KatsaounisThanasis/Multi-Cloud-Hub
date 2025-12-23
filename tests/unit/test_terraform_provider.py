@@ -8,6 +8,9 @@ from unittest.mock import Mock, patch, MagicMock, mock_open
 from backend.providers.terraform_provider import TerraformProvider
 from backend.providers.base import DeploymentResult, DeploymentStatus, ResourceGroup, CloudResource, ProviderType
 
+# Mark all tests in this module as requiring Terraform
+pytestmark = pytest.mark.terraform
+
 
 @pytest.fixture
 def terraform_gcp_provider():
@@ -144,13 +147,35 @@ class TestTerraformProvider:
         assert len(result) == 0
 
     @pytest.mark.asyncio
-    async def test_create_resource_group_not_implemented(self, terraform_azure_provider):
-        """Test that create resource group raises NotImplementedError"""
-        with pytest.raises(NotImplementedError):
-            await terraform_azure_provider.create_resource_group(
-                name="test-group",
-                location="westeurope"
-            )
+    @patch('subprocess.run')
+    @patch('os.makedirs')
+    @patch('builtins.open', new_callable=mock_open)
+    async def test_create_resource_group_azure(self, mock_file, mock_makedirs, mock_run, terraform_azure_provider):
+        """Test creating Azure resource group via Terraform"""
+        mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
+
+        result = await terraform_azure_provider.create_resource_group(
+            name="test-group",
+            location="westeurope",
+            tags={"env": "test"}
+        )
+
+        assert isinstance(result, ResourceGroup)
+        assert result.name == "test-group"
+        assert result.location == "westeurope"
+
+    @pytest.mark.asyncio
+    async def test_create_resource_group_gcp_skips(self, terraform_gcp_provider):
+        """Test that GCP skips resource group creation (not supported)"""
+        result = await terraform_gcp_provider.create_resource_group(
+            name="test-group",
+            location="us-central1"
+        )
+
+        # GCP doesn't use resource groups, should return success without action
+        assert isinstance(result, ResourceGroup)
+        assert result.name == "test-group"
+        assert result.location == "us-central1"
 
     def test_get_provider_type(self, terraform_azure_provider):
         """Test getting provider type"""

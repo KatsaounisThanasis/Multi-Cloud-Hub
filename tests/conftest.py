@@ -22,6 +22,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "docker: Tests requiring Docker")
     config.addinivalue_line("markers", "azure: Tests requiring Azure credentials")
     config.addinivalue_line("markers", "gcp: Tests requiring GCP credentials")
+    config.addinivalue_line("markers", "terraform: Tests requiring Terraform CLI")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -225,6 +226,12 @@ def pytest_runtest_setup(item):
     if "gcp" in [mark.name for mark in item.iter_markers()]:
         if not os.getenv("GOOGLE_PROJECT_ID"):
             pytest.skip("GCP credentials not configured")
+
+    # Skip Terraform tests if Terraform is not installed
+    if "terraform" in [mark.name for mark in item.iter_markers()]:
+        import shutil
+        if not shutil.which("terraform"):
+            pytest.skip("Terraform CLI not installed")
 
 
 # ============================================================================

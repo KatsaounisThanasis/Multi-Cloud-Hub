@@ -513,8 +513,7 @@ resource "azurerm_resource_group" "{name}" {{
                 return ResourceGroup(
                     name=name,
                     location=location,
-                    tags=tags or {},
-                    provisioning_state="Succeeded"
+                    tags=tags or {}
                 )
             except subprocess.CalledProcessError as e:
                 logger.error(f"Failed to create resource group: {e.stderr.decode() if e.stderr else str(e)}")
@@ -526,8 +525,7 @@ resource "azurerm_resource_group" "{name}" {{
             return ResourceGroup(
                 name=name,
                 location=location,
-                tags=tags or {},
-                provisioning_state="Succeeded"
+                tags=tags or {}
             )
 
     async def delete_resource_group(self, name: str) -> bool:
