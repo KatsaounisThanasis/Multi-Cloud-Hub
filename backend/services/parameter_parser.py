@@ -271,6 +271,100 @@ class BicepParameterParser:
         return None
 
 
+class ARMParameterParser:
+    """Parser for Azure ARM template parameters"""
+
+    # Map ARM types to our parameter types
+    TYPE_MAP = {
+        'string': ParameterType.STRING,
+        'securestring': ParameterType.STRING,
+        'int': ParameterType.INT,
+        'bool': ParameterType.BOOL,
+        'object': ParameterType.OBJECT,
+        'secureobject': ParameterType.OBJECT,
+        'array': ParameterType.ARRAY,
+    }
+
+    @staticmethod
+    def parse(content: str) -> List[Parameter]:
+        """
+        Parse parameters from ARM template JSON content.
+
+        ARM templates have this structure:
+        {
+          "parameters": {
+            "paramName": {
+              "type": "string",
+              "defaultValue": "value",
+              "allowedValues": ["a", "b"],
+              "metadata": { "description": "..." },
+              "minValue": 1,
+              "maxValue": 100,
+              "minLength": 1,
+              "maxLength": 50
+            }
+          }
+        }
+        """
+        parameters = []
+
+        try:
+            template = json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse ARM template JSON: {e}")
+            return []
+
+        # Get parameters section
+        params_section = template.get('parameters', {})
+
+        for param_name, param_def in params_section.items():
+            param = ARMParameterParser._parse_parameter(param_name, param_def)
+            if param:
+                parameters.append(param)
+
+        return parameters
+
+    @staticmethod
+    def _parse_parameter(name: str, definition: Dict[str, Any]) -> Optional[Parameter]:
+        """Parse a single ARM parameter definition"""
+
+        # Get type
+        arm_type = definition.get('type', 'string').lower()
+        param_type = ARMParameterParser.TYPE_MAP.get(arm_type, ParameterType.STRING)
+
+        # Get description from metadata
+        metadata = definition.get('metadata', {})
+        description = metadata.get('description')
+
+        # Get default value
+        default = definition.get('defaultValue')
+
+        # Get allowed values
+        allowed_values = definition.get('allowedValues')
+
+        # Get constraints
+        min_value = definition.get('minValue')
+        max_value = definition.get('maxValue')
+        min_length = definition.get('minLength')
+        max_length = definition.get('maxLength')
+
+        # Determine if required (no default value)
+        required = default is None
+
+        return Parameter(
+            name=name,
+            param_type=param_type,
+            description=description,
+            default=default,
+            required=required,
+            allowed_values=allowed_values,
+            min_value=min_value,
+            max_value=max_value,
+            min_length=min_length,
+            max_length=max_length
+        )
+
+
 class TerraformParameterParser:
     """Parser for Terraform template variables"""
 
@@ -479,9 +573,7 @@ class TemplateParameterParser:
         elif path.suffix == '.tf':
             return TerraformParameterParser.parse(content)
         elif path.suffix == '.json':
-            # TODO: Implement ARM template parser
-            logger.warning("ARM template parsing not yet implemented")
-            return []
+            return ARMParameterParser.parse(content)
         else:
             logger.warning(f"Unsupported template type: {path.suffix}")
             return []
@@ -500,8 +592,6 @@ class TemplateParameterParser:
         elif template_type == 'terraform':
             return TerraformParameterParser.parse(content)
         elif template_type == 'arm':
-            # TODO: Implement ARM template parser
-            logger.warning("ARM template parsing not yet implemented")
-            return []
+            return ARMParameterParser.parse(content)
         else:
             raise ValueError(f"Unsupported template type: {template_type}")

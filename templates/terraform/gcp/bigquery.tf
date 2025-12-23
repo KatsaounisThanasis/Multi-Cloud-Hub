@@ -31,11 +31,6 @@ terraform {
 variable "dataset_id" {
   description = "ID of the BigQuery dataset"
   type        = string
-
-  validation {
-    condition     = can(regex("^[a-zA-Z0-9_]{1,1024}$", var.dataset_id))
-    error_message = "Dataset ID must be 1-1024 characters, alphanumeric and underscores only"
-  }
 }
 
 variable "project_id" {

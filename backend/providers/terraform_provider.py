@@ -475,16 +475,77 @@ variable "{key}" {{
         tags: Optional[Dict[str, str]] = None
     ) -> ResourceGroup:
         """Create resource group using Terraform."""
-        # Generate minimal Terraform config for resource group
         config_dir = os.path.join(self.working_dir, f"rg-{name}")
         os.makedirs(config_dir, exist_ok=True)
 
-        # This would generate appropriate Terraform for the cloud platform
-        raise NotImplementedError("Resource group creation via Terraform not yet implemented")
+        if self.cloud_platform == "azure":
+            # Generate Azure resource group Terraform config
+            tf_config = f'''
+terraform {{
+  required_providers {{
+    azurerm = {{
+      source  = "hashicorp/azurerm"
+      version = "~> 3.0"
+    }}
+  }}
+}}
+
+provider "azurerm" {{
+  features {{}}
+  subscription_id = "{self.subscription_id}"
+}}
+
+resource "azurerm_resource_group" "{name}" {{
+  name     = "{name}"
+  location = "{location}"
+  tags = {json.dumps(tags or {})}
+}}
+'''
+            main_tf = os.path.join(config_dir, "main.tf")
+            with open(main_tf, "w") as f:
+                f.write(tf_config)
+
+            # Run terraform init and apply
+            try:
+                subprocess.run(["terraform", "init"], cwd=config_dir, check=True, capture_output=True)
+                subprocess.run(["terraform", "apply", "-auto-approve"], cwd=config_dir, check=True, capture_output=True)
+
+                return ResourceGroup(
+                    name=name,
+                    location=location,
+                    tags=tags or {},
+                    provisioning_state="Succeeded"
+                )
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to create resource group: {e.stderr.decode() if e.stderr else str(e)}")
+                raise DeploymentError(f"Failed to create resource group: {name}")
+        else:
+            # GCP doesn't have resource groups - projects are the equivalent
+            # Just return a placeholder as GCP projects are managed differently
+            logger.info(f"GCP does not use resource groups. Skipping creation for: {name}")
+            return ResourceGroup(
+                name=name,
+                location=location,
+                tags=tags or {},
+                provisioning_state="Succeeded"
+            )
 
     async def delete_resource_group(self, name: str) -> bool:
-        """Delete resource group."""
-        raise NotImplementedError("Resource group deletion via Terraform not yet implemented")
+        """Delete resource group using Terraform."""
+        config_dir = os.path.join(self.working_dir, f"rg-{name}")
+
+        if self.cloud_platform == "azure" and os.path.exists(config_dir):
+            try:
+                subprocess.run(["terraform", "destroy", "-auto-approve"], cwd=config_dir, check=True, capture_output=True)
+                return True
+            except subprocess.CalledProcessError as e:
+                logger.error(f"Failed to delete resource group: {e.stderr.decode() if e.stderr else str(e)}")
+                return False
+        elif self.cloud_platform == "gcp":
+            logger.info(f"GCP does not use resource groups. Skipping deletion for: {name}")
+            return True
+
+        return False
 
     async def list_resources(self, resource_group: str) -> List[CloudResource]:
         """List resources."""

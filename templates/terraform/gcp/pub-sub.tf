@@ -79,7 +79,7 @@ variable "schema_type" {
   default     = "AVRO"
 
   validation {
-    condition     = var.schema_name == null || contains(["AVRO", "PROTOCOL_BUFFER"], var.schema_type)
+    condition     = contains(["AVRO", "PROTOCOL_BUFFER"], var.schema_type)
     error_message = "Schema type must be AVRO or PROTOCOL_BUFFER"
   }
 }

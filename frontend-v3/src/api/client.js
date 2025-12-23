@@ -196,8 +196,28 @@ export const resourceGroupAPI = {
   delete: (name, providerType, subscriptionId) => 
     api.delete(`/resource-groups/${name}`, { params: { provider_type: providerType, subscription_id: subscriptionId } }),
     
-  listResources: (groupName, providerType, subscriptionId) =>
-    api.get(`/resource-groups/${groupName}/resources`, { params: { provider_type: providerType, subscription_id: subscriptionId } }),
-};
-
-export default api;
+      listResources: (groupName, providerType, subscriptionId) =>
+      api.get(`/resource-groups/${groupName}/resources`, { params: { provider_type: providerType, subscription_id: subscriptionId } }),
+  };
+  
+  // ============================================================================
+  // Cloud Accounts and Permissions API
+  // ============================================================================
+  export const cloudAccountsAPI = {
+    getAll: () => api.get('/cloud-accounts'),
+    getById: (id) => api.get(`/cloud-accounts/${id}`),
+    create: (data) => api.post('/cloud-accounts', data),
+    update: (id, data) => api.put(`/cloud-accounts/${id}`, data),
+    delete: (id) => api.delete(`/cloud-accounts/${id}`),
+    
+    // Permissions
+    getPermissions: (accountId) => api.get(`/cloud-accounts/${accountId}/permissions`),
+    assignPermission: (accountId, data) => api.post(`/cloud-accounts/${accountId}/permissions`, data),
+    removePermission: (accountId, userEmail) => 
+      api.delete(`/cloud-accounts/${accountId}/permissions/${encodeURIComponent(userEmail)}`),
+    
+    // User perspective
+    getUserPermissions: () => api.get('/cloud-accounts/user/permissions'),
+  };
+  
+  export default api;

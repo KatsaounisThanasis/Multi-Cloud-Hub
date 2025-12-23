@@ -170,6 +170,66 @@ async def create_cloud_account(
         db.close()
 
 
+# ================================================================
+# User Permission Check Endpoint (MUST be before /{account_id})
+# ================================================================
+
+@router.get("/user/permissions",
+    summary="Get Current User's Cloud Permissions",
+    response_model=StandardResponse)
+async def get_user_permissions(
+    current_user: dict = Depends(get_current_user)
+):
+    """Get all cloud account permissions for the current user."""
+    db = SessionLocal()
+    try:
+        is_admin = has_permission(current_user, 'manage_users')
+
+        if is_admin:
+            # Admins have full access to all accounts
+            accounts = db.query(CloudAccount).filter(CloudAccount.is_active == 'true').all()
+            permissions_data = [
+                {
+                    "account": acc.to_dict(include_secrets=False),
+                    "can_deploy": True,
+                    "can_view": True
+                }
+                for acc in accounts
+            ]
+        else:
+            # Get user's specific permissions
+            permissions = db.query(UserCloudPermission).filter(
+                UserCloudPermission.user_email == current_user['email']
+            ).all()
+
+            permissions_data = []
+            for perm in permissions:
+                account = db.query(CloudAccount).filter(
+                    CloudAccount.id == perm.cloud_account_id,
+                    CloudAccount.is_active == 'true'
+                ).first()
+                if account:
+                    permissions_data.append({
+                        "account": account.to_dict(include_secrets=False),
+                        "can_deploy": perm.can_deploy == 'true',
+                        "can_view": perm.can_view == 'true'
+                    })
+
+        return success_response(
+            message=f"Retrieved {len(permissions_data)} account permissions",
+            data={
+                "permissions": permissions_data,
+                "is_admin": is_admin
+            }
+        )
+    finally:
+        db.close()
+
+
+# ================================================================
+# Cloud Account CRUD Endpoints
+# ================================================================
+
 @router.get("/{account_id}",
     summary="Get Cloud Account",
     response_model=StandardResponse)
@@ -480,61 +540,5 @@ async def remove_permission(
         db.rollback()
         logger.error(f"Error removing permission: {e}")
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        db.close()
-
-
-# ================================================================
-# User Permission Check Endpoint
-# ================================================================
-
-@router.get("/user/permissions",
-    summary="Get Current User's Cloud Permissions",
-    response_model=StandardResponse)
-async def get_user_permissions(
-    current_user: dict = Depends(get_current_user)
-):
-    """Get all cloud account permissions for the current user."""
-    db = SessionLocal()
-    try:
-        is_admin = has_permission(current_user, 'manage_users')
-
-        if is_admin:
-            # Admins have full access to all accounts
-            accounts = db.query(CloudAccount).filter(CloudAccount.is_active == 'true').all()
-            permissions_data = [
-                {
-                    "account": acc.to_dict(include_secrets=False),
-                    "can_deploy": True,
-                    "can_view": True
-                }
-                for acc in accounts
-            ]
-        else:
-            # Get user's specific permissions
-            permissions = db.query(UserCloudPermission).filter(
-                UserCloudPermission.user_email == current_user['email']
-            ).all()
-
-            permissions_data = []
-            for perm in permissions:
-                account = db.query(CloudAccount).filter(
-                    CloudAccount.id == perm.cloud_account_id,
-                    CloudAccount.is_active == 'true'
-                ).first()
-                if account:
-                    permissions_data.append({
-                        "account": account.to_dict(include_secrets=False),
-                        "can_deploy": perm.can_deploy == 'true',
-                        "can_view": perm.can_view == 'true'
-                    })
-
-        return success_response(
-            message=f"Retrieved {len(permissions_data)} account permissions",
-            data={
-                "permissions": permissions_data,
-                "is_admin": is_admin
-            }
-        )
     finally:
         db.close()

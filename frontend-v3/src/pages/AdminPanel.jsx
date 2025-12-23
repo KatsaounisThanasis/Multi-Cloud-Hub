@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
-import { deploymentAPI } from '../api/client';
+import { authAPI, deploymentAPI, cloudAccountsAPI } from '../api/client';
 import axios from 'axios';
 import LoadingState from '../components/LoadingState';
 import { formatTemplateName, getStatusColor, formatProviderType } from '../utils/formatters';
@@ -96,9 +96,7 @@ function AdminPanel() {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/auth/users`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await authAPI.listUsers();
       if (response.data.success) {
         setUsers(response.data.data.users || []);
       }
@@ -128,9 +126,7 @@ function AdminPanel() {
 
   const fetchCloudAccounts = async () => {
     try {
-      const response = await axios.get(`${API_BASE_URL}/cloud-accounts`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await cloudAccountsAPI.getAll();
       if (response.data.success) {
         setCloudAccounts(response.data.data.accounts || []);
       }
@@ -145,21 +141,13 @@ function AdminPanel() {
     try {
       if (selectedAccount) {
         // Update existing account
-        const response = await axios.put(
-          `${API_BASE_URL}/cloud-accounts/${selectedAccount.id}`,
-          accountForm,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const response = await cloudAccountsAPI.update(selectedAccount.id, accountForm);
         if (response.data.success) {
           addToast('Cloud account updated successfully', 'success', 3000);
         }
       } else {
         // Create new account
-        const response = await axios.post(
-          `${API_BASE_URL}/cloud-accounts`,
-          accountForm,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const response = await cloudAccountsAPI.create(accountForm);
         if (response.data.success) {
           addToast('Cloud account created successfully', 'success', 3000);
         }
@@ -175,10 +163,7 @@ function AdminPanel() {
   const handleDeleteAccount = async (accountId) => {
     if (!confirm('Are you sure you want to delete this cloud account? All associated permissions will also be deleted.')) return;
     try {
-      const response = await axios.delete(
-        `${API_BASE_URL}/cloud-accounts/${accountId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await cloudAccountsAPI.delete(accountId);
       if (response.data.success) {
         addToast('Cloud account deleted successfully', 'success', 3000);
         fetchCloudAccounts();
@@ -221,10 +206,7 @@ function AdminPanel() {
   const openPermissionsModal = async (account) => {
     setSelectedAccount(account);
     try {
-      const response = await axios.get(
-        `${API_BASE_URL}/cloud-accounts/${account.id}/permissions`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await cloudAccountsAPI.getPermissions(account.id);
       if (response.data.success) {
         setAccountPermissions(response.data.data.permissions || []);
       }
@@ -238,19 +220,12 @@ function AdminPanel() {
   const handleAddPermission = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/cloud-accounts/${selectedAccount.id}/permissions`,
-        permissionForm,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await cloudAccountsAPI.assignPermission(selectedAccount.id, permissionForm);
       if (response.data.success) {
         addToast('Permission added successfully', 'success', 3000);
         setPermissionForm({ user_email: '', can_deploy: true, can_view: true });
         // Refresh permissions
-        const permResponse = await axios.get(
-          `${API_BASE_URL}/cloud-accounts/${selectedAccount.id}/permissions`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+        const permResponse = await cloudAccountsAPI.getPermissions(selectedAccount.id);
         if (permResponse.data.success) {
           setAccountPermissions(permResponse.data.data.permissions || []);
         }
@@ -263,10 +238,7 @@ function AdminPanel() {
   const handleRemovePermission = async (userEmail) => {
     if (!confirm(`Remove permission for ${userEmail}?`)) return;
     try {
-      const response = await axios.delete(
-        `${API_BASE_URL}/cloud-accounts/${selectedAccount.id}/permissions/${encodeURIComponent(userEmail)}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await cloudAccountsAPI.removePermission(selectedAccount.id, userEmail);
       if (response.data.success) {
         addToast('Permission removed', 'success', 3000);
         setAccountPermissions(prev => prev.filter(p => p.user_email !== userEmail));
@@ -280,11 +252,7 @@ function AdminPanel() {
   const handleAddUser = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        `${API_BASE_URL}/auth/register`,
-        newUser,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await authAPI.register(newUser);
       if (response.data.success) {
         addToast(`User ${newUser.username} created successfully`, 'success', 3000);
         setShowAddModal(false);
@@ -299,11 +267,7 @@ function AdminPanel() {
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.put(
-        `${API_BASE_URL}/auth/users/${selectedUser.email}`,
-        editUser,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await authAPI.updateUser(selectedUser.email, editUser);
       if (response.data.success) {
         addToast('User updated successfully', 'success', 3000);
         setShowEditModal(false);
@@ -318,10 +282,7 @@ function AdminPanel() {
   const handleDeleteUser = async (userEmail) => {
     if (!confirm(`Are you sure you want to delete user ${userEmail}?`)) return;
     try {
-      const response = await axios.delete(
-        `${API_BASE_URL}/auth/users/${userEmail}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+      const response = await authAPI.deleteUser(userEmail);
       if (response.data.success) {
         addToast('User deleted successfully', 'success', 3000);
         fetchUsers();
