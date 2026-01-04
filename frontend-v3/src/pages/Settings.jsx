@@ -95,8 +95,9 @@ function Settings() {
 
     localStorage.setItem('cloudCredentials', JSON.stringify(settingsForStorage));
 
-    // Also save to sessionStorage for current session (including secrets)
-    sessionStorage.setItem('cloudCredentials', JSON.stringify(settings));
+    // Note: Secrets are NOT stored in browser storage for security.
+    // They are only held in React state during the current page session.
+    // For production use, credentials should be managed server-side via environment variables.
 
     setSaveStatus('success');
     setSaveMessage('Settings saved successfully! These will be used for your deployments.');
@@ -122,7 +123,6 @@ function Settings() {
     setGcpRegion('');
 
     localStorage.removeItem('cloudCredentials');
-    sessionStorage.removeItem('cloudCredentials');
 
     setSaveStatus('success');
     setSaveMessage('Settings reset! Using default environment credentials.');
@@ -405,9 +405,9 @@ function Settings() {
               <h3 className="text-sm font-medium text-blue-800">Security Notice</h3>
               <div className="mt-2 text-sm text-blue-700">
                 <ul className="list-disc list-inside space-y-1">
-                  <li>Custom credentials are stored in your browser's localStorage/sessionStorage</li>
-                  <li>Secrets (like client secret) are only stored for the current session</li>
-                  <li>For production use, consider using environment variables or a secure secrets manager</li>
+                  <li>Non-sensitive settings (IDs, regions) are stored in localStorage</li>
+                  <li>Secrets (like client secret) are never persisted - they're cleared on page refresh</li>
+                  <li>For production use, configure credentials via environment variables on the server</li>
                   <li>These settings apply to deployments made from this browser only</li>
                 </ul>
               </div>

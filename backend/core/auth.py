@@ -256,24 +256,42 @@ def has_permission(user: Dict[str, Any], permission: str) -> bool:
     permissions = ROLE_PERMISSIONS.get(role, [])
     return permission in permissions
 
-# Initialize default users for testing
+# Initialize default users for testing (DEVELOPMENT ONLY)
 def initialize_default_users():
-    """Create default users for testing and development."""
+    """Create default users for testing and development.
+
+    WARNING: This function only runs in development mode (ENVIRONMENT != 'production').
+    In production, users should be created through proper registration or admin tools.
+    """
     global user_id_counter
 
+    # Only create default users in development mode
+    environment = os.getenv('ENVIRONMENT', 'development').lower()
+    if environment == 'production':
+        print("ℹ️  Production mode: Skipping default user creation")
+        return
+
     if len(users_db) == 0:
-        print("\n🔐 Initializing default users...")
+        import secrets
+
+        print("\n🔐 Initializing default users (development mode only)...")
+        print("⚠️  WARNING: Default users are for development only. Do not use in production.")
+
+        # Generate random passwords for default users
+        admin_pwd = secrets.token_urlsafe(16)
+        user_pwd = secrets.token_urlsafe(16)
+        viewer_pwd = secrets.token_urlsafe(16)
 
         # Create admin user
         try:
             admin_user = UserCreate(
                 email="admin@example.com",
-                password="admin123",
+                password=admin_pwd,
                 username="Administrator",
                 role=UserRole.ADMIN
             )
             create_user(admin_user)
-            print("  ✓ Admin user created: admin@example.com / admin123")
+            print(f"  ✓ Admin user created: admin@example.com / {admin_pwd}")
         except Exception as e:
             print(f"  ✗ Failed to create admin user: {e}")
 
@@ -281,12 +299,12 @@ def initialize_default_users():
         try:
             regular_user = UserCreate(
                 email="user@example.com",
-                password="user123",
+                password=user_pwd,
                 username="Regular User",
                 role=UserRole.USER
             )
             create_user(regular_user)
-            print("  ✓ Regular user created: user@example.com / user123")
+            print(f"  ✓ Regular user created: user@example.com / {user_pwd}")
         except Exception as e:
             print(f"  ✗ Failed to create regular user: {e}")
 
@@ -294,13 +312,14 @@ def initialize_default_users():
         try:
             viewer_user = UserCreate(
                 email="viewer@example.com",
-                password="viewer123",
+                password=viewer_pwd,
                 username="Viewer User",
                 role=UserRole.VIEWER
             )
             create_user(viewer_user)
-            print("  ✓ Viewer user created: viewer@example.com / viewer123")
+            print(f"  ✓ Viewer user created: viewer@example.com / {viewer_pwd}")
         except Exception as e:
             print(f"  ✗ Failed to create viewer user: {e}")
 
-        print(f"\n📊 Total users: {len(users_db)}\n")
+        print(f"\n📊 Total users: {len(users_db)}")
+        print("📝 Note: Save these credentials - they are randomly generated each startup.\n")

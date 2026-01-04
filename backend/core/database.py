@@ -11,15 +11,17 @@ from datetime import datetime
 import enum
 import os
 
-# Database URL from environment or default to SQLite for development
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres@localhost:5432/cloud_manager"
-)
+# Database URL from environment
+# In production, DATABASE_URL must be set. In development, falls back to SQLite.
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-# For SQLite fallback in development
-if not DATABASE_URL.startswith("postgresql"):
+if not DATABASE_URL:
+    # Development fallback: use SQLite (no credentials needed)
     DATABASE_URL = "sqlite:///./cloud_manager.db"
+    print("ℹ️  DATABASE_URL not set, using SQLite for development")
+elif not DATABASE_URL.startswith("postgresql"):
+    # If set but not PostgreSQL, use as-is (could be SQLite path)
+    pass
 
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
