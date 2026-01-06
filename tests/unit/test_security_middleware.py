@@ -259,9 +259,10 @@ class TestCSRFMiddleware:
         """Test exempt paths configuration."""
         middleware = CSRFMiddleware(MagicMock())
 
-        assert "/auth/login" in middleware.EXEMPT_PATHS
-        assert "/auth/register" in middleware.EXEMPT_PATHS
+        # Check that auth paths are covered (uses prefix matching)
+        assert "/auth" in middleware.EXEMPT_PATHS
         assert "/health" in middleware.EXEMPT_PATHS
+        assert "/docs" in middleware.EXEMPT_PATHS
 
     def test_has_api_auth_jwt(self):
         """Test API auth detection for JWT."""
