@@ -1,0 +1,146 @@
+# Production Docker Compose for Multi-Cloud Infrastructure Management API
+
+services:
+  # Main API service
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: multicloud-api-prod
+    ports:
+      - "8000:8000"
+    environment:
+      - LOG_LEVEL=INFO
+      - ENVIRONMENT=production
+      # Security (In real prod, these should be in a secure .env file)
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-super-secret-key-change-this}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:80,http://localhost:5173}
+      # Database and Redis
+      - DATABASE_URL=postgresql://apiuser:${DB_PASSWORD:-changeme}@postgres:5432/multicloud
+      - REDIS_URL=redis://redis:6379/0
+      # Cloud Config
+      - AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-service-account.json
+      - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
+    volumes:
+      - ./logs:/app/logs
+      - ./templates:/app/templates
+      - ${GCP_CREDENTIALS_PATH:-./credentials}:/app/credentials:ro
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - multicloud-prod-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Frontend React Application (Production Build with Nginx)
+  frontend:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.frontend
+    container_name: multicloud-frontend-prod
+    ports:
+      - "80:80"
+    networks:
+      - multicloud-prod-net
+    depends_on:
+      - api
+    restart: always
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: multicloud-worker-prod
+    command: >
+      bash -c "
+        if [ -n \"$$AZURE_CLIENT_ID\" ] && [ -n \"$$AZURE_CLIENT_SECRET\" ] && [ -n \"$$AZURE_TENANT_ID\" ]; then
+          echo 'Logging in to Azure CLI...'
+          az login --service-principal -u $$AZURE_CLIENT_ID -p $$AZURE_CLIENT_SECRET --tenant $$AZURE_TENANT_ID --output none 2>/dev/null || echo 'Azure login failed'
+          echo 'Azure CLI configured'
+        fi
+        celery -A backend.tasks.celery_app worker --loglevel=info --concurrency=2 --hostname=worker@%h
+      "
+    environment:
+      - DATABASE_URL=postgresql://apiuser:${DB_PASSWORD:-changeme}@postgres:5432/multicloud
+      - REDIS_URL=redis://redis:6379/0
+      - AZURE_SUBSCRIPTION_ID=${AZURE_SUBSCRIPTION_ID}
+      - AZURE_TENANT_ID=${AZURE_TENANT_ID}
+      - AZURE_CLIENT_ID=${AZURE_CLIENT_ID}
+      - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET}
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials/gcp-service-account.json
+      - GOOGLE_PROJECT_ID=${GOOGLE_PROJECT_ID}
+    volumes:
+      - ./logs:/app/logs
+      - ./templates:/app/templates
+      - ${GCP_CREDENTIALS_PATH:-./credentials}:/app/credentials:ro
+    networks:
+      - multicloud-prod-net
+    depends_on:
+      - redis
+      - postgres
+    restart: always
+    # Simplified healthcheck that doesn't rely on complex hostname resolution
+    healthcheck:
+      test: ["CMD-SHELL", "celery -A backend.tasks.celery_app inspect ping -d worker@$HOSTNAME"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    container_name: multicloud-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-prod-data:/data
+    networks:
+      - multicloud-prod-net
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # PostgreSQL
+  postgres:
+    image: postgres:15-alpine
+    container_name: multicloud-db-prod
+    environment:
+      - POSTGRES_DB=multicloud
+      - POSTGRES_USER=apiuser
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-changeme}
+    volumes:
+      - postgres-prod-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - multicloud-prod-net
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U apiuser"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+networks:
+  multicloud-prod-net:
+    driver: bridge
+
+volumes:
+  redis-prod-data:
+  postgres-prod-data:

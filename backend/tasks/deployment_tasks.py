@@ -308,58 +308,66 @@ def deploy_infrastructure(
         }
 
     except (DeploymentError, ProviderConfigurationError) as e:
-        logger.error(f"Deployment {deployment_id} failed: {str(e)}")
+        # Get friendly error message
+        friendly_msg = e.get_friendly_message() if hasattr(e, 'get_friendly_message') else str(e)
+        logger.error(f"Deployment {deployment_id} failed: {friendly_msg}")
 
-        # Update deployment record with error - strip ANSI codes from error message
+        # Update deployment record with error - use friendly message
         if deployment:
             deployment.status = DeploymentStatus.FAILED
             deployment.completed_at = datetime.utcnow()
-            deployment.error_message = strip_ansi_codes(str(e))
+            deployment.error_message = strip_ansi_codes(friendly_msg)
             deployment.logs += "\n" + log_entry("ERROR", "✗ Deployment failed", phase="failed",
                                                details={"error_type": type(e).__name__})
-            deployment.logs += log_entry("ERROR", strip_ansi_codes(str(e)), phase="failed")
-            deployment.logs += f"\n--- Full Traceback ---\n{traceback.format_exc()}"
+            deployment.logs += log_entry("ERROR", strip_ansi_codes(friendly_msg), phase="failed")
             db.commit()
 
-        # Update task state
+        # Update task state with friendly error
         self.update_state(
             state="FAILURE",
             meta={
                 "deployment_id": deployment_id,
                 "phase": "failed",
-                "error": str(e),
-                "traceback": traceback.format_exc()
+                "error": friendly_msg
             }
         )
 
-        raise
+        raise RuntimeError(friendly_msg)  # Raise a simpler exception for Celery
 
     except Exception as e:
-        logger.error(f"Unexpected error in deployment {deployment_id}: {str(e)}")
+        # Parse error through error_parser for better messages
+        from backend.core.error_parser import parse_terraform_error
+        error_text = strip_ansi_codes(str(e))
+        parsed = parse_terraform_error(error_text)
+        friendly_msg = f"{parsed.get('title', 'Error')} | {parsed.get('message', error_text)}"
+        if parsed.get('solution'):
+            friendly_msg += f" | Solution: {parsed['solution']}"
 
-        # Update deployment record - strip ANSI codes from error message
+        logger.error(f"Unexpected error in deployment {deployment_id}: {friendly_msg}")
+
+        # Update deployment record with friendly error message
         if deployment:
             deployment.status = DeploymentStatus.FAILED
             deployment.completed_at = datetime.utcnow()
-            deployment.error_message = f"Unexpected error: {strip_ansi_codes(str(e))}"
+            deployment.error_message = friendly_msg
             deployment.logs += "\n" + log_entry("ERROR", "✗ Unexpected error occurred", phase="failed",
                                                details={"error_type": type(e).__name__})
-            deployment.logs += log_entry("ERROR", f"Error: {strip_ansi_codes(str(e))}", phase="failed")
+            deployment.logs += log_entry("ERROR", friendly_msg, phase="failed")
             deployment.logs += f"\n--- Full Traceback ---\n{traceback.format_exc()}"
             db.commit()
 
-        # Update task state
+        # Update task state with friendly error
         self.update_state(
             state="FAILURE",
             meta={
                 "deployment_id": deployment_id,
                 "phase": "failed",
-                "error": str(e),
+                "error": friendly_msg,
                 "traceback": traceback.format_exc()
             }
         )
 
-        raise
+        raise RuntimeError(friendly_msg)
 
 
 @celery_app.task(name="backend.tasks.cleanup_deployment")

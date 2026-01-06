@@ -9,6 +9,13 @@ function DeploymentLogStream({ deploymentId, onComplete }) {
   const [error, setError] = useState(null);
   const eventSourceRef = useRef(null);
   const logsEndRef = useRef(null);
+  const onCompleteRef = useRef(onComplete);
+  const hasCompletedRef = useRef(false);
+
+  // Keep onComplete ref updated
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   // Auto-scroll to bottom
   const scrollToBottom = () => {
@@ -71,8 +78,10 @@ function DeploymentLogStream({ deploymentId, onComplete }) {
               message: data.message,
               timestamp: new Date().toISOString()
             }]);
-            if (onComplete) {
-              onComplete({ status: 'completed', outputs: data.outputs });
+            // Only call onComplete once
+            if (onCompleteRef.current && !hasCompletedRef.current) {
+              hasCompletedRef.current = true;
+              onCompleteRef.current({ status: 'completed', outputs: data.outputs });
             }
             eventSource.close();
             break;
@@ -85,8 +94,10 @@ function DeploymentLogStream({ deploymentId, onComplete }) {
               message: data.message,
               timestamp: new Date().toISOString()
             }]);
-            if (onComplete) {
-              onComplete({ status: 'failed', error: data.message });
+            // Only call onComplete once
+            if (onCompleteRef.current && !hasCompletedRef.current) {
+              hasCompletedRef.current = true;
+              onCompleteRef.current({ status: 'failed', error: data.message });
             }
             eventSource.close();
             break;
@@ -96,15 +107,21 @@ function DeploymentLogStream({ deploymentId, onComplete }) {
             break;
 
           default:
-            console.log('Unknown event type:', data.type);
+            // Unknown event type - ignore silently
+            break;
         }
-      } catch (err) {
-        console.error('Error parsing SSE data:', err);
+      } catch {
+        // Error parsing SSE data - ignore silently
       }
     };
 
-    eventSource.onerror = (err) => {
-      console.error('EventSource error:', err);
+    eventSource.onerror = () => {
+      // If we already finished (completed or failed), ignore connection close errors
+      if (status === 'completed' || status === 'failed' || hasCompletedRef.current) {
+        eventSource.close();
+        return;
+      }
+
       setStatus('error');
       setError('Connection lost');
       setLogs(prev => [...prev, {
@@ -121,7 +138,7 @@ function DeploymentLogStream({ deploymentId, onComplete }) {
         eventSourceRef.current.close();
       }
     };
-  }, [deploymentId, onComplete]);
+  }, [deploymentId]);  // Removed onComplete - using ref instead
 
   const getStatusColor = () => {
     switch (status) {

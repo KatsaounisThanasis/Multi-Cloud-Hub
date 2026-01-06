@@ -173,13 +173,13 @@ variable "cloudsql_instances" {
 }
 
 variable "ingress" {
-  description = "Ingress settings (all, internal, internal-and-cloud-load-balancing)"
+  description = "Ingress settings (INGRESS_TRAFFIC_ALL, INGRESS_TRAFFIC_INTERNAL_ONLY, INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER)"
   type        = string
-  default     = "all"
+  default     = "INGRESS_TRAFFIC_ALL"
 
   validation {
-    condition     = contains(["all", "internal", "internal-and-cloud-load-balancing"], var.ingress)
-    error_message = "Ingress must be all, internal, or internal-and-cloud-load-balancing"
+    condition     = contains(["INGRESS_TRAFFIC_ALL", "INGRESS_TRAFFIC_INTERNAL_ONLY", "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"], var.ingress)
+    error_message = "Ingress must be INGRESS_TRAFFIC_ALL, INGRESS_TRAFFIC_INTERNAL_ONLY, or INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
   }
 }
 

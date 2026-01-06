@@ -20,12 +20,12 @@ variable "machine_type" {
 variable "zone" {
   type        = string
   description = "Zone to create the instance in (region + zone letter)"
+  default     = "us-central1-a"
 
   validation {
-    condition = can(regex("^(us-central1|us-east1|us-west1|europe-west1|europe-west2|europe-west4|asia-east1|asia-southeast1)-(a|b|c|d|e|f)$", var.zone))
+    condition     = can(regex("^(us-central1|us-east1|us-west1|europe-west1|europe-west2|europe-west4|asia-east1|asia-southeast1)-(a|b|c|d|e|f)$", var.zone))
     error_message = "Zone must be a valid GCP zone (e.g., us-central1-a, europe-west1-b)"
-  default = "us-central1-a"
-}
+  }
 }
 
 variable "image_family" {

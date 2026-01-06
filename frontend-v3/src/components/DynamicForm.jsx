@@ -42,10 +42,6 @@ function DynamicForm({ provider, template, onSubmit, onCancel }) {
 
       if (response.data.success) {
         const params = response.data.data.parameters;
-        console.log('[DynamicForm] Fetched parameters:', params);
-        console.log('[DynamicForm] Parameters with allowed_values:',
-          params.filter(p => p.allowed_values).map(p => ({ name: p.name, values: p.allowed_values }))
-        );
         setParameters(params);
 
         // Set default values from parameters
@@ -86,7 +82,6 @@ function DynamicForm({ provider, template, onSubmit, onCancel }) {
             const options = await getDynamicOptions(provider, param.name, context);
 
             if (options && options.length > 0) {
-              console.log(`[DynamicForm] Loaded ${options.length} dynamic options for ${param.name}`);
               setDynamicOptions(prev => ({
                 ...prev,
                 [param.name]: options
@@ -287,7 +282,16 @@ function DynamicForm({ provider, template, onSubmit, onCancel }) {
       return;
     }
 
-    onSubmit(formData);
+    // Filter out empty arrays and empty strings so Terraform uses defaults
+    const cleanedData = Object.fromEntries(
+      Object.entries(formData).filter(([, value]) => {
+        if (Array.isArray(value)) return value.length > 0;
+        if (typeof value === 'string') return value.trim() !== '';
+        return value !== null && value !== undefined;
+      })
+    );
+
+    onSubmit(cleanedData);
   };
 
   const renderInput = (param) => {

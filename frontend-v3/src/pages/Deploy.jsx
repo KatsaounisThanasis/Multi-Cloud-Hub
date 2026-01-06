@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ServiceCatalog from '../components/ServiceCatalog';
 import DeploymentWizard from '../components/DeploymentWizard';
@@ -69,8 +69,7 @@ function Deploy() {
           setSelectedAccount(null);
         }
       }
-    } catch (err) {
-      console.error('Failed to fetch cloud accounts:', err);
+    } catch {
       // Not critical - user can still deploy using env credentials
       setAvailableAccounts([]);
     } finally {
@@ -109,8 +108,8 @@ function Deploy() {
           id: settings.gcp.projectId
         };
       }
-    } catch (err) {
-      console.error('Failed to parse credentials info:', err);
+    } catch {
+      // Failed to parse credentials info
     }
 
     return null;
@@ -171,10 +170,8 @@ function Deploy() {
       if (selectedAccount) {
         if (providerType.includes('azure') && selectedAccount.subscription_id) {
           customSubscriptionId = selectedAccount.subscription_id;
-          console.log('[Deploy] Using Azure subscription from cloud account:', selectedAccount.name);
         } else if (providerType.includes('gcp') && selectedAccount.project_id) {
           customSubscriptionId = selectedAccount.project_id;
-          console.log('[Deploy] Using GCP project from cloud account:', selectedAccount.name);
         }
       }
 
@@ -187,13 +184,11 @@ function Deploy() {
 
             if (providerType.includes('azure') && settings.azure?.mode === 'custom') {
               customSubscriptionId = settings.azure.subscriptionId;
-              console.log('[Deploy] Using custom Azure subscription from settings');
             } else if (providerType.includes('gcp') && settings.gcp?.mode === 'custom') {
               customSubscriptionId = settings.gcp.projectId;
-              console.log('[Deploy] Using custom GCP project from settings');
             }
-          } catch (err) {
-            console.error('[Deploy] Failed to parse saved settings:', err);
+          } catch {
+            // Failed to parse saved settings - use env credentials
           }
         }
       }
@@ -208,8 +203,6 @@ function Deploy() {
         parameters: templateParameters  // Only template-specific params
       };
 
-      console.log('[Deploy] Sending payload:', payload);
-
       const response = await axios.post(`${API_BASE_URL}/deploy`, payload);
 
       if (response.data.success) {
@@ -221,7 +214,6 @@ function Deploy() {
         addToast('Deployment created successfully! Starting deployment...', 'success', 4000);
       }
     } catch (err) {
-      console.error('[Deploy] Error:', err.response?.data);
 
       let errorMessage = 'Failed to create deployment';
 
@@ -231,25 +223,39 @@ function Deploy() {
           const field = error.loc?.join('.') || 'unknown';
           return `${field}: ${error.msg}`;
         }).join(', ');
-        errorMessage = `Validation Error: ${validationErrors}`;
-      } else if (err.response?.data?.error) {
-        // Handle error object or string
-        if (typeof err.response.data.error === 'object') {
-          errorMessage = err.response.data.error.message ||
-            err.response.data.error.details ||
-            JSON.stringify(err.response.data.error);
-        } else {
-          errorMessage = err.response.data.error;
-        }
+        setError({
+          title: 'Validation Error',
+          message: validationErrors,
+          solution: 'Please check the highlighted fields and correct the values.'
+        });
+      } else if (err.response?.data?.error && typeof err.response.data.error === 'object') {
+        // Handle structured error from backend
+        setError(err.response.data.error);
+        errorMessage = err.response.data.error.message || err.response.data.message;
       } else if (err.response?.data?.message) {
-        errorMessage = err.response.data.message;
+        // Try to parse pipe-separated friendly message
+        const msg = err.response.data.message;
+        if (msg.includes(' | ')) {
+          const parts = msg.split(' | ');
+          setError({
+            title: parts[0] || 'Error',
+            message: parts[1] || msg,
+            solution: parts[2]?.replace('Solution: ', '') || '',
+            example: parts[3] || ''
+          });
+        } else {
+          setError({ title: 'Deployment Error', message: msg });
+        }
+        errorMessage = msg;
       } else if (err.response?.data?.detail && typeof err.response.data.detail === 'string') {
         errorMessage = err.response.data.detail;
+        setError({ title: 'Error', message: errorMessage });
       } else if (err.message) {
         errorMessage = err.message;
+        setError({ title: 'Network Error', message: errorMessage });
+      } else {
+        setError({ title: 'Unknown Error', message: errorMessage });
       }
-
-      setError(errorMessage);
       setDeploying(false);
 
       // Show error toast
@@ -257,7 +263,7 @@ function Deploy() {
     }
   };
 
-  const handleDeploymentComplete = (result) => {
+  const handleDeploymentComplete = useCallback((result) => {
     // Navigate to deployment details when complete
     if (result.status === 'completed') {
       // Show success toast
@@ -268,13 +274,25 @@ function Deploy() {
       }, 2000); // Wait 2 seconds to show final logs
     } else if (result.status === 'failed') {
       const errorMsg = result.error || 'Deployment failed';
-      setError(errorMsg);
+      // Parse error if it has structured format
+      if (errorMsg.includes(' | ')) {
+        const parts = errorMsg.split(' | ');
+        setError({
+          title: parts[0] || 'Deployment Failed',
+          message: parts[1] || errorMsg,
+          solution: parts[2]?.replace('Solution: ', '') || '',
+          example: parts[3] || ''
+        });
+      } else {
+        setError({ title: 'Deployment Failed', message: errorMsg });
+      }
       setDeploying(false);
 
-      // Show error toast
-      addToast(errorMsg, 'error', 6000);
+      // Show error toast (short version)
+      const shortMsg = errorMsg.includes(' | ') ? errorMsg.split(' | ')[0] : errorMsg;
+      addToast(shortMsg, 'error', 6000);
     }
-  };
+  }, [addToast, navigate, deploymentId]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -342,11 +360,26 @@ function Deploy() {
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
                 </svg>
               </div>
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">Deployment Error</h3>
+              <div className="ml-3 flex-1">
+                <h3 className="text-sm font-medium text-red-800">
+                  {typeof error === 'object' ? error.title : 'Deployment Error'}
+                </h3>
                 <div className="mt-2 text-sm text-red-700">
-                  <p>{error}</p>
+                  <p>{typeof error === 'object' ? error.message : error}</p>
                 </div>
+                {typeof error === 'object' && error.solution && (
+                  <div className="mt-3 p-3 bg-yellow-50 rounded-md border border-yellow-200">
+                    <p className="text-sm text-yellow-800">
+                      <span className="font-medium">Solution: </span>
+                      {error.solution}
+                    </p>
+                    {error.example && (
+                      <p className="mt-1 text-sm text-yellow-700 font-mono bg-yellow-100 px-2 py-1 rounded inline-block">
+                        {error.example}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           </div>

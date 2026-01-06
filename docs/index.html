@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Cloud Hub - Unified Cloud Infrastructure Management</title>
+    <meta name="description" content="Deploy and manage cloud infrastructure across Azure and GCP with a single unified platform. 35+ production-ready Terraform templates.">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>☁️</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #7c3aed;
+            --primary-dark: #5b21b6;
+            --secondary: #06b6d4;
+            --azure: #0078d4;
+            --gcp: #4285f4;
+            --success: #10b981;
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --text: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-dark);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        /* Animated background */
+        .bg-gradient {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background:
+                radial-gradient(ellipse at 20% 20%, rgba(124, 58, 237, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(0, 120, 212, 0.05) 0%, transparent 70%);
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Navigation */
+        nav {
+            padding: 20px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            z-index: 100;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 700;
+            font-size: 1.25rem;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        nav ul {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+        }
+
+        nav a {
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        nav a:hover {
+            color: var(--text);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 40px rgba(124, 58, 237, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        /* Hero */
+        .hero {
+            padding: 180px 0 100px;
+            text-align: center;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 24px;
+            background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .cloud-badges {
+            display: flex;
+            gap: 24px;
+            justify-content: center;
+            margin-top: 60px;
+        }
+
+        .cloud-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: var(--bg-card);
+            border-radius: 50px;
+            font-weight: 500;
+        }
+
+        .cloud-badge.azure { border: 1px solid var(--azure); }
+        .cloud-badge.gcp { border: 1px solid var(--gcp); }
+
+        /* Features */
+        .features {
+            padding: 100px 0;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-title h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .section-title p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 32px;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .feature-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            color: var(--text-muted);
+        }
+
+        /* Stats */
+        .stats {
+            padding: 60px 0;
+            background: var(--bg-card);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+            text-align: center;
+        }
+
+        .stat-item h3 {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-item p {
+            color: var(--text-muted);
+            margin-top: 8px;
+        }
+
+        /* Screenshots */
+        .screenshots {
+            padding: 100px 0;
+        }
+
+        .screenshot-showcase {
+            position: relative;
+            margin-top: 40px;
+        }
+
+        .screenshot-main {
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .screenshot-main img {
+            width: 100%;
+            display: block;
+        }
+
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 40px;
+        }
+
+        .screenshot-item {
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s;
+        }
+
+        .screenshot-item:hover {
+            transform: scale(1.02);
+            border-color: var(--primary);
+        }
+
+        .screenshot-item img {
+            width: 100%;
+            display: block;
+        }
+
+        /* Tech Stack */
+        .tech-stack {
+            padding: 100px 0;
+            background: var(--bg-card);
+        }
+
+        .tech-grid {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .tech-item {
+            padding: 16px 28px;
+            background: var(--bg-dark);
+            border-radius: 8px;
+            font-weight: 500;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        /* CTA */
+        .cta {
+            padding: 100px 0;
+            text-align: center;
+        }
+
+        .cta h2 {
+            font-size: 2.5rem;
+            margin-bottom: 24px;
+        }
+
+        .cta p {
+            color: var(--text-muted);
+            margin-bottom: 40px;
+            font-size: 1.1rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 2.5rem; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .screenshot-grid { grid-template-columns: 1fr; }
+            nav ul { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-gradient"></div>
+
+    <nav>
+        <div class="container">
+            <div class="logo">
+                <div class="logo-icon">☁️</div>
+                <span>Multi-Cloud Hub</span>
+            </div>
+            <ul>
+                <li><a href="#features">Features</a></li>
+                <li><a href="#screenshots">Screenshots</a></li>
+                <li><a href="https://github.com/KatsaounisThanasis/Multi-Cloud-Hub/blob/main/docs/API_REFERENCE.md">API Docs</a></li>
+                <li><a href="https://github.com/KatsaounisThanasis/Multi-Cloud-Hub">GitHub</a></li>
+            </ul>
+            <a href="https://github.com/KatsaounisThanasis/Multi-Cloud-Hub" class="btn btn-primary">
+                <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.385-1.335-1.755-1.335-1.755-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.605-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12"/></svg>
+                View on GitHub
+            </a>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container">
+            <h1>Multi-Cloud Infrastructure<br>Made Simple</h1>
+            <p>Deploy and manage cloud infrastructure across Azure and Google Cloud Platform with a unified, enterprise-grade platform powered by Terraform.</p>
+            <div class="hero-buttons">
+                <a href="https://github.com/KatsaounisThanasis/Multi-Cloud-Hub#quick-start" class="btn btn-primary">
+                    Get Started
+                    <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+                </a>
+                <a href="https://github.com/KatsaounisThanasis/Multi-Cloud-Hub" class="btn btn-secondary">
+                    View Documentation
+                </a>
+            </div>
+            <div class="cloud-badges">
+                <div class="cloud-badge azure">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#0078d4"><path d="M13.05 4.24L6.56 18.05a.5.5 0 00.46.7h9.97a.5.5 0 00.46-.7L10.95 4.24a.5.5 0 00-.9 0z"/></svg>
+                    Microsoft Azure
+                </div>
+                <div class="cloud-badge gcp">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="#4285f4"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    Google Cloud
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <h3>35+</h3>
+                    <p>Terraform Templates</p>
+                </div>
+                <div class="stat-item">
+                    <h3>2</h3>
+                    <p>Cloud Providers</p>
+                </div>
+                <div class="stat-item">
+                    <h3>100%</h3>
+                    <p>Infrastructure as Code</p>
+                </div>
+                <div class="stat-item">
+                    <h3>24/7</h3>
+                    <p>Real-time Monitoring</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-title">
+                <h2>Powerful Features</h2>
+                <p>Everything you need to manage multi-cloud infrastructure</p>
+            </div>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🚀</div>
+                    <h3>One-Click Deployments</h3>
+                    <p>Deploy complex infrastructure with a single click using pre-built, production-ready Terraform templates.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3>Cost Estimation</h3>
+                    <p>Preview monthly costs before deploying. No surprises - know exactly what you'll pay.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Real-time Logs</h3>
+                    <p>Watch deployments happen live with streaming logs, progress tracking, and instant alerts.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔐</div>
+                    <h3>Role-Based Access</h3>
+                    <p>Fine-grained permissions with Admin, User, and Viewer roles. Secure credential management.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔌</div>
+                    <h3>REST API</h3>
+                    <p>Full API access for automation, CI/CD integration, and programmatic deployments.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📦</div>
+                    <h3>Template Library</h3>
+                    <p>22 Azure + 13 GCP templates covering VMs, databases, networking, containers, and more.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="screenshots" id="screenshots">
+        <div class="container">
+            <div class="section-title">
+                <h2>See It In Action</h2>
+                <p>A modern, intuitive interface for cloud infrastructure management</p>
+            </div>
+            <div class="screenshot-showcase">
+                <div class="screenshot-main">
+                    <img src="../ScreenShots/demo.gif" alt="Multi-Cloud Hub Demo">
+                </div>
+                <div class="screenshot-grid">
+                    <div class="screenshot-item">
+                        <img src="../ScreenShots/04-template-catalog-azure.png" alt="Template Catalog">
+                    </div>
+                    <div class="screenshot-item">
+                        <img src="../ScreenShots/08-deployment-logs-realtime.png" alt="Real-time Logs">
+                    </div>
+                    <div class="screenshot-item">
+                        <img src="../ScreenShots/12-admin-panel-users.png" alt="Admin Panel">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="tech-stack">
+        <div class="container">
+            <div class="section-title">
+                <h2>Built With Modern Tech</h2>
+                <p>Enterprise-grade technologies for reliability and performance</p>
+            </div>
+            <div class="tech-grid">
+                <div class="tech-item">Python 3.11</div>
+                <div class="tech-item">FastAPI</div>
+                <div class="tech-item">React 18</div>
+                <div class="tech-item">Terraform</div>
+                <div class="tech-item">PostgreSQL</div>
+                <div class="tech-item">Redis</div>
+                <div class="tech-item">Celery</div>
+                <div class="tech-item">Docker</div>
+                <div class="tech-item">Tailwind CSS</div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cta">
+        <div class="container">
+            <h2>Ready to Simplify Your Cloud?</h2>
+            <p>Get started in minutes with Docker Compose</p>
+            <div class="hero-buttons">
+                <a href="https://github.com/KatsaounisThanasis/Multi-Cloud-Hub#quick-start" class="btn btn-primary">
+                    Quick Start Guide
+                </a>
+                <a href="https://github.com/KatsaounisThanasis/Multi-Cloud-Hub" class="btn btn-secondary">
+                    Star on GitHub ⭐
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <p>Built with ❤️ by <a href="https://github.com/KatsaounisThanasis">Thanasis Katsaounis</a></p>
+            <p style="margin-top: 8px;">Licensed under Apache 2.0</p>
+        </div>
+    </footer>
+</body>
+</html>

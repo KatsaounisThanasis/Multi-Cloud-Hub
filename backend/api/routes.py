@@ -16,6 +16,8 @@ import logging
 from backend.core.security import (
     SecurityHeadersMiddleware,
     RequestLoggingMiddleware,
+    RateLimitingMiddleware,
+    CSRFMiddleware,
     get_cors_config,
     security_config
 )
@@ -41,7 +43,8 @@ from backend.api.routers import (
     azure_router,
     gcp_router,
     resource_groups_router,
-    cloud_accounts_router
+    cloud_accounts_router,
+    metrics_router
 )
 
 # Configure logging
@@ -102,28 +105,54 @@ app = FastAPI(
 # 1. Security Headers (applied last to all responses)
 app.add_middleware(SecurityHeadersMiddleware)
 
-# 2. Request Logging (applied second)
+# 2. CSRF Protection (applied after security headers)
+app.add_middleware(CSRFMiddleware)
+
+# 3. Rate Limiting (applied before CSRF)
+app.add_middleware(RateLimitingMiddleware)
+
+# 4. Request Logging (applied early)
 app.add_middleware(RequestLoggingMiddleware)
 
-# 3. CORS configuration (applied first)
+# 5. CORS configuration (applied first)
 cors_config = get_cors_config()
 app.add_middleware(CORSMiddleware, **cors_config)
 
+
+# Import DeploymentError for handler
+from backend.providers.base import DeploymentError
 
 # ================================================================
 # Global Exception Handlers
 # ================================================================
 
+@app.exception_handler(DeploymentError)
+async def deployment_error_handler(request: Request, exc: DeploymentError):
+    """Handle deployment errors with user-friendly messages."""
+    friendly = exc.get_friendly_error()
+    logger.error(f"DeploymentError: {friendly.get('title')} - {friendly.get('message')}")
+    return JSONResponse(
+        status_code=400,
+        content={
+            "success": False,
+            "message": exc.get_friendly_message(),
+            "error": friendly,
+            "timestamp": datetime.utcnow().isoformat()
+        }
+    )
+
+
 @app.exception_handler(MultiCloudException)
 async def multicloud_exception_handler(request: Request, exc: MultiCloudException):
-    """Handle all MultiCloudException instances with consistent format."""
-    logger.error(f"MultiCloudException: {exc.code} - {exc.message}", exc_info=True)
+    """Handle all MultiCloudException instances with user-friendly format."""
+    friendly = exc.get_friendly_error()
+    logger.error(f"MultiCloudException: {friendly.get('title')} - {friendly.get('message')}")
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "success": False,
-            "message": exc.message,
-            "error": exc.to_dict(),
+            "message": exc.get_friendly_message(),
+            "error": friendly,
             "timestamp": datetime.utcnow().isoformat()
         }
     )
@@ -132,17 +161,25 @@ async def multicloud_exception_handler(request: Request, exc: MultiCloudExceptio
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Catch-all handler for unexpected exceptions."""
+    from backend.core.error_parser import parse_terraform_error
+
     logger.exception(f"Unhandled exception: {str(exc)}")
+
+    # Try to parse the error for a friendlier message
+    error_text = str(exc)
+    friendly = parse_terraform_error(error_text)
+    friendly['code'] = "INTERNAL_SERVER_ERROR"
+
+    # In development, include more details
+    if os.getenv("ENVIRONMENT") == "development":
+        friendly['original'] = error_text
+
     return JSONResponse(
         status_code=500,
         content={
             "success": False,
-            "message": "An unexpected error occurred",
-            "error": {
-                "code": "INTERNAL_SERVER_ERROR",
-                "message": "An unexpected error occurred",
-                "details": str(exc) if os.getenv("ENVIRONMENT") == "development" else None
-            },
+            "message": f"{friendly.get('title', 'Error')} | {friendly.get('message', 'An unexpected error occurred')}",
+            "error": friendly,
             "timestamp": datetime.utcnow().isoformat()
         }
     )
@@ -230,6 +267,9 @@ app.include_router(resource_groups_router)
 
 # Cloud accounts routes
 app.include_router(cloud_accounts_router)
+
+# Metrics routes (for Prometheus scraping)
+app.include_router(metrics_router)
 
 
 # ================================================================

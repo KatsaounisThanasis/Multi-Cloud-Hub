@@ -1,0 +1,27 @@
+title: Multi-Cloud Hub
+description: A unified platform for deploying and managing cloud infrastructure across Azure and GCP
+url: https://katsaounisthanasis.github.io
+baseurl: /Multi-Cloud-Hub
+theme: null
+
+# GitHub Pages settings
+remote_theme: null
+plugins: []
+
+# SEO
+author: Thanasis Katsaounis
+twitter:
+  card: summary_large_image
+
+# Social
+social:
+  name: Thanasis Katsaounis
+  links:
+    - https://github.com/KatsaounisThanasis
+
+# Exclude from build
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor

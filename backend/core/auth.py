@@ -258,22 +258,33 @@ def has_permission(user: Dict[str, Any], permission: str) -> bool:
 
 # Initialize default users for testing
 def initialize_default_users():
-    """Create default users for testing and development."""
+    """Create default users for testing and development only."""
     global user_id_counter
 
+    # Only create default users in development mode
+    environment = os.getenv('ENVIRONMENT', 'development').lower()
+    if environment == 'production':
+        print("\n🔐 Production mode: No default users created. Use /auth/register to create users.\n")
+        return
+
     if len(users_db) == 0:
-        print("\n🔐 Initializing default users...")
+        print("\n🔐 Development mode: Initializing default users...")
+
+        # Fixed passwords for development - matches frontend demo buttons
+        admin_pass = "admin123"
+        user_pass = "user123"
+        viewer_pass = "viewer123"
 
         # Create admin user
         try:
             admin_user = UserCreate(
                 email="admin@example.com",
-                password="admin123",
+                password=admin_pass,
                 username="Administrator",
                 role=UserRole.ADMIN
             )
             create_user(admin_user)
-            print("  ✓ Admin user created: admin@example.com / admin123")
+            print(f"  ✓ Admin: admin@example.com / admin123")
         except Exception as e:
             print(f"  ✗ Failed to create admin user: {e}")
 
@@ -281,12 +292,12 @@ def initialize_default_users():
         try:
             regular_user = UserCreate(
                 email="user@example.com",
-                password="user123",
+                password=user_pass,
                 username="Regular User",
                 role=UserRole.USER
             )
             create_user(regular_user)
-            print("  ✓ Regular user created: user@example.com / user123")
+            print(f"  ✓ User: user@example.com / user123")
         except Exception as e:
             print(f"  ✗ Failed to create regular user: {e}")
 
@@ -294,13 +305,43 @@ def initialize_default_users():
         try:
             viewer_user = UserCreate(
                 email="viewer@example.com",
-                password="viewer123",
+                password=viewer_pass,
                 username="Viewer User",
                 role=UserRole.VIEWER
             )
             create_user(viewer_user)
-            print("  ✓ Viewer user created: viewer@example.com / viewer123")
+            print(f"  ✓ Viewer: viewer@example.com / viewer123")
         except Exception as e:
             print(f"  ✗ Failed to create viewer user: {e}")
 
-        print(f"\n📊 Total users: {len(users_db)}\n")
+        # Additional demo users for screenshots
+        demo_users = [
+            # Admins
+            {"email": "john.smith@company.com", "username": "John Smith", "role": UserRole.ADMIN, "password": "demo123"},
+            {"email": "sarah.johnson@company.com", "username": "Sarah Johnson", "role": UserRole.ADMIN, "password": "demo123"},
+            # Users (Developers/Engineers)
+            {"email": "michael.chen@company.com", "username": "Michael Chen", "role": UserRole.USER, "password": "demo123"},
+            {"email": "emily.davis@company.com", "username": "Emily Davis", "role": UserRole.USER, "password": "demo123"},
+            {"email": "david.wilson@company.com", "username": "David Wilson", "role": UserRole.USER, "password": "demo123"},
+            {"email": "alex.martinez@company.com", "username": "Alex Martinez", "role": UserRole.USER, "password": "demo123"},
+            # Viewers (Read-only)
+            {"email": "jessica.brown@company.com", "username": "Jessica Brown", "role": UserRole.VIEWER, "password": "demo123"},
+            {"email": "robert.taylor@company.com", "username": "Robert Taylor", "role": UserRole.VIEWER, "password": "demo123"},
+        ]
+
+        print("\n  📋 Creating demo users...")
+        for u in demo_users:
+            try:
+                demo_user = UserCreate(
+                    email=u["email"],
+                    password=u["password"],
+                    username=u["username"],
+                    role=u["role"]
+                )
+                create_user(demo_user)
+                print(f"    ✓ {u['role']}: {u['username']} ({u['email']})")
+            except Exception as e:
+                print(f"    ✗ Failed: {u['email']} - {e}")
+
+        print(f"\n📊 Total users: {len(users_db)}")
+        print("⚠️  Note: These are development credentials. Set ENVIRONMENT=production to disable.\n")

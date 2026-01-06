@@ -407,10 +407,8 @@ variable "{key}" {{
                 working_dir=config_dir
             )
             if returncode != 0:
-                raise DeploymentError(
-                    f"Terraform plan failed: {output}",
-                    provider="terraform"
-                )
+                # DeploymentError auto-parses for friendly message
+                raise DeploymentError(output, provider="terraform")
 
             # Apply
             logger.info("Applying Terraform configuration...")
@@ -419,10 +417,8 @@ variable "{key}" {{
                 working_dir=config_dir
             )
             if returncode != 0:
-                raise DeploymentError(
-                    f"Terraform apply failed: {output}",
-                    provider="terraform"
-                )
+                # DeploymentError auto-parses for friendly message
+                raise DeploymentError(output, provider="terraform")
 
             # Get outputs
             output_json, _ = self._run_terraform_command(

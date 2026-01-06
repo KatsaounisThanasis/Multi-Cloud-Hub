@@ -36,6 +36,33 @@ class MultiCloudException(Exception):
             error_dict["details"] = self.details
         return error_dict
 
+    def get_friendly_error(self) -> Dict[str, Any]:
+        """
+        Parse and return user-friendly error dict.
+
+        Uses the error_parser to translate technical errors into user-friendly messages.
+        """
+        from backend.core.error_parser import parse_terraform_error
+
+        # Try to parse the details (which contains the actual error reason)
+        error_text = self.details if self.details else self.message
+        parsed = parse_terraform_error(error_text)
+
+        # Add the error code
+        parsed['code'] = self.code
+
+        return parsed
+
+    def get_friendly_message(self) -> str:
+        """Get formatted friendly message string."""
+        parsed = self.get_friendly_error()
+        parts = [parsed.get('title', 'Error'), parsed.get('message', self.message)]
+        if parsed.get('solution'):
+            parts.append(f"Solution: {parsed['solution']}")
+        if parsed.get('example'):
+            parts.append(parsed['example'])
+        return " | ".join(parts)
+
 
 # ================================================================
 # Template Errors

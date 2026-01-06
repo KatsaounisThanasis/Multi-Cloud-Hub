@@ -279,6 +279,23 @@ class DeploymentError(Exception):
         self.details = details or {}
         super().__init__(self.message)
 
+    def get_friendly_error(self) -> Dict[str, Any]:
+        """Parse and return user-friendly error dict."""
+        from backend.core.error_parser import parse_terraform_error
+        parsed = parse_terraform_error(self.message)
+        parsed['provider'] = self.provider
+        return parsed
+
+    def get_friendly_message(self) -> str:
+        """Get formatted friendly message string."""
+        parsed = self.get_friendly_error()
+        parts = [parsed.get('title', 'Error'), parsed.get('message', self.message)]
+        if parsed.get('solution'):
+            parts.append(f"Solution: {parsed['solution']}")
+        if parsed.get('example'):
+            parts.append(parsed['example'])
+        return " | ".join(parts)
+
 
 class ProviderConfigurationError(Exception):
     """Exception raised when provider configuration is invalid."""
@@ -287,3 +304,20 @@ class ProviderConfigurationError(Exception):
         self.message = message
         self.provider = provider
         super().__init__(self.message)
+
+    def get_friendly_error(self) -> Dict[str, Any]:
+        """Parse and return user-friendly error dict."""
+        from backend.core.error_parser import parse_terraform_error
+        parsed = parse_terraform_error(self.message)
+        parsed['provider'] = self.provider
+        return parsed
+
+    def get_friendly_message(self) -> str:
+        """Get formatted friendly message string."""
+        parsed = self.get_friendly_error()
+        parts = [parsed.get('title', 'Error'), parsed.get('message', self.message)]
+        if parsed.get('solution'):
+            parts.append(f"Solution: {parsed['solution']}")
+        if parsed.get('example'):
+            parts.append(parsed['example'])
+        return " | ".join(parts)

@@ -36,13 +36,6 @@ function DeploymentWizard({ template, provider, onCancel, onDeploy }) {
     const fetchParameters = async () => {
       try {
         const response = await templateAPI.getParameters(provider, template.name);
-        console.log('[DeploymentWizard] Fetched parameters:', response.data.data.parameters);
-        console.log('[DeploymentWizard] Parameters with allowed_values:',
-          response.data.data.parameters.filter(p => p.allowed_values).map(p => ({
-            name: p.name,
-            values: p.allowed_values
-          }))
-        );
         setParameters(response.data.data.parameters);
 
         // Set default values
@@ -78,15 +71,15 @@ function DeploymentWizard({ template, provider, onCancel, onDeploy }) {
                 defaults['project_id'] = settings.gcp.projectId;
               }
             }
-          } catch (error) {
-            console.error('Failed to load credentials from settings:', error);
+          } catch {
+            // Failed to load credentials from settings - use defaults
           }
         }
 
         setFormData(defaults);
         setLoading(false);
-      } catch (err) {
-        console.error('Failed to fetch parameters:', err);
+      } catch {
+        // Failed to fetch parameters - loading state will remain
         setLoading(false);
       }
     };
@@ -116,14 +109,13 @@ function DeploymentWizard({ template, provider, onCancel, onDeploy }) {
             const options = await getDynamicOptions(provider, param.name, context);
 
             if (options && options.length > 0) {
-              console.log(`[DeploymentWizard] Loaded ${options.length} dynamic options for ${param.name}`);
               setDynamicOptions(prev => ({
                 ...prev,
                 [param.name]: options
               }));
             }
-          } catch (error) {
-            console.error(`Failed to fetch dynamic options for ${param.name}:`, error);
+          } catch {
+            // Failed to fetch dynamic options - field will use manual input
           } finally {
             setLoadingOptions(prev => ({ ...prev, [param.name]: false }));
           }
@@ -204,9 +196,18 @@ function DeploymentWizard({ template, provider, onCancel, onDeploy }) {
         }
       });
 
+      // Filter out empty arrays and empty strings so Terraform uses defaults
+      const cleanedFormData = Object.fromEntries(
+        Object.entries(formData).filter(([, value]) => {
+          if (Array.isArray(value)) return value.length > 0;
+          if (typeof value === 'string') return value.trim() !== '';
+          return value !== null && value !== undefined;
+        })
+      );
+
       // Include tags in form data
       const deploymentData = {
-        ...formData,
+        ...cleanedFormData,
         tags: tagsMap
       };
       onDeploy(deploymentData);
@@ -340,7 +341,6 @@ function DeploymentWizard({ template, provider, onCancel, onDeploy }) {
     }
     // Priority 2: Static allowed_values from template
     else if (param.allowed_values && param.allowed_values.length > 0) {
-      console.log('[DeploymentWizard] Rendering dropdown for:', param.name, 'with values:', param.allowed_values);
       inputElement = (
         <select
           value={value}

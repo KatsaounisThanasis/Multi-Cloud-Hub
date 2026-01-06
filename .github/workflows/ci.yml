@@ -7,49 +7,174 @@ on:
     branches: [ main, preprod ]
 
 jobs:
-  backend-test:
+  # =============================================================================
+  # Security Scanning
+  # =============================================================================
+  security-scan:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
+
+    - name: Install Security Tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install bandit safety
+
+    - name: Run Bandit (Python Security Linter)
+      run: |
+        bandit -r backend/ -ll -ii -x tests/ --format json --output bandit-report.json || true
+        bandit -r backend/ -ll -ii -x tests/ --format txt
+      continue-on-error: true
+
+    - name: Run Safety (Dependency Vulnerability Check)
+      run: |
+        safety check -r requirements.txt --output json > safety-report.json || true
+        safety check -r requirements.txt || true
+      continue-on-error: true
+
+    - name: Upload Security Reports
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: security-reports
+        path: |
+          bandit-report.json
+          safety-report.json
+
+  # =============================================================================
+  # Backend Tests
+  # =============================================================================
+  backend-test:
+    runs-on: ubuntu-latest
+    needs: security-scan
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         pip install pytest pytest-asyncio pytest-cov
+
     - name: Run Backend Tests
       run: |
         export ENVIRONMENT=test
         # Run only unit tests in CI to avoid cloud credential requirements
-        # Override coverage threshold for CI (no Terraform = fewer tests = lower coverage)
-        pytest tests/unit --cov-fail-under=0
+        pytest tests/unit -v --cov=backend --cov-report=xml --cov-report=term-missing --cov-fail-under=50
       env:
         DATABASE_URL: sqlite:///./test.db
         JWT_SECRET_KEY: test-secret-key
 
+    - name: Upload Coverage Report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: coverage-report
+        path: coverage.xml
+
+  # =============================================================================
+  # Code Quality
+  # =============================================================================
+  code-quality:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install Quality Tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install black flake8 isort mypy
+        pip install -r requirements.txt
+
+    - name: Check Code Formatting (Black)
+      run: black --check backend/ tests/ || true
+      continue-on-error: true
+
+    - name: Check Import Sorting (isort)
+      run: isort --check-only backend/ tests/ || true
+      continue-on-error: true
+
+    - name: Run Flake8 Linter
+      run: flake8 backend/ --max-line-length=120 --ignore=E501,W503 || true
+      continue-on-error: true
+
+  # =============================================================================
+  # Frontend Build & Lint
+  # =============================================================================
   frontend-build:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
         cache-dependency-path: frontend-v3/package-lock.json
+
     - name: Install dependencies
       run: cd frontend-v3 && npm install
+
+    - name: Run ESLint
+      run: cd frontend-v3 && npm run lint || true
+      continue-on-error: true
+
     - name: Build Frontend
       run: cd frontend-v3 && npm run build
 
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend-v3/dist
+
+  # =============================================================================
+  # Docker Build & Scan
+  # =============================================================================
   docker-build:
     runs-on: ubuntu-latest
+    needs: [backend-test, frontend-build]
     steps:
     - uses: actions/checkout@v4
+
     - name: Build API Docker Image
       run: docker build -t multicloud-api:latest .
+
     - name: Build Frontend Docker Image
-      run: cd frontend-v3 && docker build -t multicloud-frontend:latest -f Dockerfile.dev .
+      run: cd frontend-v3 && docker build -t multicloud-frontend:latest .
+
+    - name: Run Trivy Vulnerability Scanner (API)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'multicloud-api:latest'
+        format: 'table'
+        exit-code: '0'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'
+
+    - name: Run Trivy Vulnerability Scanner (Frontend)
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: 'multicloud-frontend:latest'
+        format: 'table'
+        exit-code: '0'
+        ignore-unfixed: true
+        vuln-type: 'os,library'
+        severity: 'CRITICAL,HIGH'

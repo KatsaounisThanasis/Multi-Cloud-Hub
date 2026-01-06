@@ -6,7 +6,7 @@ services:
   api:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile.api
     container_name: multicloud-api
     ports:
       - "8000:8000"
@@ -78,8 +78,8 @@ services:
   # Frontend React Application (Development)
   frontend:
     build:
-      context: ./frontend-v3
-      dockerfile: Dockerfile.dev
+      context: .
+      dockerfile: docker/Dockerfile.frontend.dev
     container_name: multicloud-frontend
     ports:
       - "5174:5173"
@@ -105,7 +105,7 @@ services:
   celery-worker:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile.api
     container_name: multicloud-worker
     # Azure login + start celery (shell form to allow env vars and chaining)
     command: >

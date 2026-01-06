@@ -9,6 +9,7 @@ This module contains all the API routers split by domain:
 - azure: Azure-specific dynamic options
 - gcp: GCP-specific dynamic options
 - resource_groups: Resource group management
+- metrics: Prometheus metrics endpoint
 """
 
 from .auth import router as auth_router
@@ -19,6 +20,7 @@ from .azure import router as azure_router
 from .gcp import router as gcp_router
 from .resource_groups import router as resource_groups_router
 from .cloud_accounts import router as cloud_accounts_router
+from .metrics import router as metrics_router
 
 __all__ = [
     'auth_router',
@@ -28,5 +30,6 @@ __all__ = [
     'azure_router',
     'gcp_router',
     'resource_groups_router',
-    'cloud_accounts_router'
+    'cloud_accounts_router',
+    'metrics_router'
 ]
