@@ -154,10 +154,10 @@ jobs:
     - uses: actions/checkout@v4
 
     - name: Build API Docker Image
-      run: docker build -t multicloud-api:latest .
+      run: docker build -t multicloud-api:latest -f docker/Dockerfile.api .
 
     - name: Build Frontend Docker Image
-      run: cd frontend-v3 && docker build -t multicloud-frontend:latest .
+      run: docker build -t multicloud-frontend:latest -f docker/Dockerfile.frontend .
 
     - name: Run Trivy Vulnerability Scanner (API)
       uses: aquasecurity/trivy-action@master
