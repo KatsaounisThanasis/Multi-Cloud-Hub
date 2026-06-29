@@ -59,7 +59,8 @@ class StateBackendManager:
     def _get_bucket_name_from_env(self) -> Optional[str]:
         """Παίρνει το bucket/container name από environment variables"""
         env_vars = {"gcp": "TERRAFORM_STATE_GCS_BUCKET", "azure": "TERRAFORM_STATE_STORAGE_ACCOUNT"}
-        return os.getenv(env_vars.get(self.cloud_platform))
+        env_key = env_vars.get(self.cloud_platform)
+        return os.getenv(env_key) if env_key else None
 
     def generate_backend_config(self, bucket_name: Optional[str] = None, **kwargs) -> Dict[str, Any]:
         """
