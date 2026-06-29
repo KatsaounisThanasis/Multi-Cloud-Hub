@@ -5,26 +5,24 @@ This provider uses Terraform to deploy resources across multiple cloud platforms
 Supports Azure and GCP through Terraform.
 """
 
-import os
 import json
 import logging
+import os
 import subprocess
 import tempfile
-from typing import Dict, List, Any, Optional
 from datetime import datetime
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from .base import (
     CloudProvider,
-    ProviderType,
-    DeploymentResult,
-    DeploymentStatus,
-    ResourceGroup,
     CloudResource,
     DeploymentError,
-    ProviderConfigurationError
+    DeploymentResult,
+    DeploymentStatus,
+    ProviderConfigurationError,
+    ProviderType,
+    ResourceGroup,
 )
-from backend.services.state_backend_manager import StateBackendManager
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +40,7 @@ class TerraformProvider(CloudProvider):
         subscription_id: Optional[str] = None,
         region: Optional[str] = None,
         cloud_platform: str = "azure",
-        terraform_version: str = "1.5.0"
+        terraform_version: str = "1.5.0",
     ):
         """
         Initialize Terraform provider.
@@ -63,7 +61,7 @@ class TerraformProvider(CloudProvider):
             raise ProviderConfigurationError(
                 "Terraform is not installed or not in PATH. "
                 "Please install Terraform: https://www.terraform.io/downloads",
-                provider="terraform"
+                provider="terraform",
             )
 
         logger.info(f"Terraform provider initialized for {cloud_platform}")
@@ -71,12 +69,7 @@ class TerraformProvider(CloudProvider):
     def _check_terraform_installed(self) -> bool:
         """Check if Terraform is installed and accessible."""
         try:
-            result = subprocess.run(
-                ["terraform", "version"],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+            result = subprocess.run(["terraform", "version"], capture_output=True, text=True, timeout=10)
             return result.returncode == 0
         except (subprocess.SubprocessError, FileNotFoundError):
             return False
@@ -88,7 +81,7 @@ class TerraformProvider(CloudProvider):
                 ["az", "group", "show", "--name", resource_group, "--query", "name", "-o", "tsv"],
                 capture_output=True,
                 text=True,
-                timeout=30
+                timeout=30,
             )
             exists = result.returncode == 0 and resource_group in result.stdout
             logger.info(f"Resource group '{resource_group}' exists: {exists}")
@@ -98,10 +91,7 @@ class TerraformProvider(CloudProvider):
             return False
 
     def _run_terraform_command(
-        self,
-        command: List[str],
-        working_dir: Optional[str] = None,
-        env: Optional[Dict[str, str]] = None
+        self, command: List[str], working_dir: Optional[str] = None, env: Optional[Dict[str, str]] = None
     ) -> tuple[str, int]:
         """
         Execute a Terraform command.
@@ -133,7 +123,7 @@ class TerraformProvider(CloudProvider):
                 capture_output=True,
                 text=True,
                 env=cmd_env,
-                timeout=600  # 10 minute timeout
+                timeout=600,  # 10 minute timeout
             )
 
             if result.stdout:
@@ -144,15 +134,9 @@ class TerraformProvider(CloudProvider):
             return result.stdout + result.stderr, result.returncode
 
         except subprocess.TimeoutExpired:
-            raise DeploymentError(
-                "Terraform command timed out after 10 minutes",
-                provider="terraform"
-            )
+            raise DeploymentError("Terraform command timed out after 10 minutes", provider="terraform")
         except Exception as e:
-            raise DeploymentError(
-                f"Failed to execute Terraform command: {str(e)}",
-                provider="terraform"
-            )
+            raise DeploymentError(f"Failed to execute Terraform command: {str(e)}", provider="terraform")
 
     def _generate_terraform_config(
         self,
@@ -160,7 +144,7 @@ class TerraformProvider(CloudProvider):
         parameters: Dict[str, Any],
         resource_group: str,
         location: str,
-        deployment_id: Optional[str] = None
+        deployment_id: Optional[str] = None,
     ) -> str:
         """
         Generate Terraform configuration from template.
@@ -201,25 +185,27 @@ class TerraformProvider(CloudProvider):
             rg_exists = self._check_azure_rg_exists(resource_group)
             if not rg_exists:
                 rg_tf_path = os.path.join(config_dir, "resource_group.tf")
-                with open(rg_tf_path, 'w') as f:
-                    f.write(f'''# Auto-create Resource Group (detected as not existing)
-resource "azurerm_resource_group" "deployment_rg" {{
+                with open(rg_tf_path, "w") as f:
+                    f.write(
+                        """# Auto-create Resource Group (detected as not existing)
+resource "azurerm_resource_group" "deployment_rg" {
   name     = var.resource_group_name
   location = var.location
 
-  tags = {{
+  tags = {
     ManagedBy = "Terraform"
     CreatedBy = "MultiCloud-Manager"
-  }}
-}}
-''')
-                logger.info(f"Generated resource_group.tf for auto-creation (RG does not exist)")
+  }
+}
+"""
+                    )
+                logger.info("Generated resource_group.tf for auto-creation (RG does not exist)")
             else:
                 logger.info(f"Resource group '{resource_group}' already exists, skipping auto-creation")
 
         # Generate main.tf
         main_tf_path = os.path.join(config_dir, "main.tf")
-        with open(main_tf_path, 'w') as f:
+        with open(main_tf_path, "w") as f:
             f.write(provider_config)
             f.write("\n\n")
             # If template_content is already Terraform, use it
@@ -227,12 +213,7 @@ resource "azurerm_resource_group" "deployment_rg" {{
                 f.write(template_content)
             else:
                 # Convert parameters to Terraform format
-                f.write(self._convert_to_terraform_resources(
-                    template_content,
-                    parameters,
-                    resource_group,
-                    location
-                ))
+                f.write(self._convert_to_terraform_resources(template_content, parameters, resource_group, location))
 
         # Generate variables.tf
         # NOTE: Disabled because templates already contain variable declarations
@@ -243,15 +224,15 @@ resource "azurerm_resource_group" "deployment_rg" {{
         # Generate terraform.tfvars
         tfvars_path = os.path.join(config_dir, "terraform.tfvars")
         logger.info(f"Generating terraform.tfvars with parameters: {parameters}")
-        with open(tfvars_path, 'w') as f:
+        with open(tfvars_path, "w") as f:
             for key, value in parameters.items():
                 if isinstance(value, str):
                     f.write(f'{key} = "{value}"\n')
                 else:
-                    f.write(f'{key} = {json.dumps(value)}\n')
+                    f.write(f"{key} = {json.dumps(value)}\n")
 
         # Log the generated tfvars content for debugging
-        with open(tfvars_path, 'r') as f:
+        with open(tfvars_path, "r") as f:
             tfvars_content = f.read()
             logger.info(f"Generated terraform.tfvars content:\n{tfvars_content}")
 
@@ -266,9 +247,9 @@ resource "azurerm_resource_group" "deployment_rg" {{
         """
         if self.cloud_platform == "azure":
             # Get Azure credentials from environment
-            tenant_id = os.getenv('AZURE_TENANT_ID', '')
-            client_id = os.getenv('AZURE_CLIENT_ID', '')
-            client_secret = os.getenv('AZURE_CLIENT_SECRET', '')
+            tenant_id = os.getenv("AZURE_TENANT_ID", "")
+            client_id = os.getenv("AZURE_CLIENT_ID", "")
+            client_secret = os.getenv("AZURE_CLIENT_SECRET", "")
 
             # If service principal credentials are available, use them
             if tenant_id and client_id and client_secret:
@@ -297,17 +278,10 @@ provider "google" {{
 }}
 """
         else:
-            raise ProviderConfigurationError(
-                f"Unsupported cloud platform: {self.cloud_platform}",
-                provider="terraform"
-            )
+            raise ProviderConfigurationError(f"Unsupported cloud platform: {self.cloud_platform}", provider="terraform")
 
     def _convert_to_terraform_resources(
-        self,
-        template_content: str,
-        parameters: Dict[str, Any],
-        resource_group: str,
-        location: str
+        self, template_content: str, parameters: Dict[str, Any], resource_group: str, location: str
     ) -> str:
         """
         Convert template to Terraform resources.
@@ -332,7 +306,7 @@ resource "azurerm_resource_group" "main" {{
 # This is a simplified example - production would need full conversion logic
 """
         elif self.cloud_platform == "gcp":
-            return f"""
+            return """
 # GCP resources converted from template
 """
 
@@ -367,7 +341,7 @@ variable "{key}" {{
         resource_group: str,
         location: str,
         deployment_name: Optional[str] = None,
-        deployment_id: Optional[str] = None
+        deployment_id: Optional[str] = None,
     ) -> DeploymentResult:
         """Deploy using Terraform with remote state backend."""
         try:
@@ -376,35 +350,24 @@ variable "{key}" {{
                 deployment_id = f"terraform-{resource_group}-{datetime.now().strftime('%Y%m%d%H%M%S')}"
 
             # Read template
-            with open(template_path, 'r') as f:
+            with open(template_path, "r") as f:
                 template_content = f.read()
 
             # Generate Terraform configuration (including remote state backend)
             config_dir = self._generate_terraform_config(
-                template_content,
-                parameters,
-                resource_group,
-                location,
-                deployment_id=deployment_id
+                template_content, parameters, resource_group, location, deployment_id=deployment_id
             )
 
             # Initialize Terraform
             logger.info("Initializing Terraform...")
-            output, returncode = self._run_terraform_command(
-                ["init"],
-                working_dir=config_dir
-            )
+            output, returncode = self._run_terraform_command(["init"], working_dir=config_dir)
             if returncode != 0:
-                raise DeploymentError(
-                    f"Terraform init failed: {output}",
-                    provider="terraform"
-                )
+                raise DeploymentError(f"Terraform init failed: {output}", provider="terraform")
 
             # Plan
             logger.info("Planning Terraform deployment...")
             output, returncode = self._run_terraform_command(
-                ["plan", "-var-file=terraform.tfvars", "-input=false", "-out=tfplan"],
-                working_dir=config_dir
+                ["plan", "-var-file=terraform.tfvars", "-input=false", "-out=tfplan"], working_dir=config_dir
             )
             if returncode != 0:
                 # DeploymentError auto-parses for friendly message
@@ -413,18 +376,14 @@ variable "{key}" {{
             # Apply
             logger.info("Applying Terraform configuration...")
             output, returncode = self._run_terraform_command(
-                ["apply", "-input=false", "-auto-approve", "tfplan"],
-                working_dir=config_dir
+                ["apply", "-input=false", "-auto-approve", "tfplan"], working_dir=config_dir
             )
             if returncode != 0:
                 # DeploymentError auto-parses for friendly message
                 raise DeploymentError(output, provider="terraform")
 
             # Get outputs
-            output_json, _ = self._run_terraform_command(
-                ["output", "-json"],
-                working_dir=config_dir
-            )
+            output_json, _ = self._run_terraform_command(["output", "-json"], working_dir=config_dir)
             try:
                 outputs = json.loads(output_json) if output_json else {}
             except json.JSONDecodeError:
@@ -438,24 +397,14 @@ variable "{key}" {{
                 message="Terraform deployment completed successfully",
                 outputs=outputs,
                 timestamp=datetime.now(),
-                provider_metadata={
-                    "config_dir": config_dir,
-                    "cloud_platform": self.cloud_platform
-                }
+                provider_metadata={"config_dir": config_dir, "cloud_platform": self.cloud_platform},
             )
 
         except Exception as e:
             logger.error(f"Terraform deployment failed: {str(e)}")
-            raise DeploymentError(
-                f"Terraform deployment failed: {str(e)}",
-                provider="terraform"
-            )
+            raise DeploymentError(f"Terraform deployment failed: {str(e)}", provider="terraform")
 
-    async def get_deployment_status(
-        self,
-        deployment_id: str,
-        resource_group: str
-    ) -> DeploymentStatus:
+    async def get_deployment_status(self, deployment_id: str, resource_group: str) -> DeploymentStatus:
         """Get deployment status - Terraform doesn't track this natively."""
         return DeploymentStatus.SUCCEEDED
 
@@ -465,10 +414,7 @@ variable "{key}" {{
         return []
 
     async def create_resource_group(
-        self,
-        name: str,
-        location: str,
-        tags: Optional[Dict[str, str]] = None
+        self, name: str, location: str, tags: Optional[Dict[str, str]] = None
     ) -> ResourceGroup:
         """Create resource group using Terraform."""
         config_dir = os.path.join(self.working_dir, f"rg-{name}")
@@ -476,7 +422,7 @@ variable "{key}" {{
 
         if self.cloud_platform == "azure":
             # Generate Azure resource group Terraform config
-            tf_config = f'''
+            tf_config = f"""
 terraform {{
   required_providers {{
     azurerm = {{
@@ -496,7 +442,7 @@ resource "azurerm_resource_group" "{name}" {{
   location = "{location}"
   tags = {json.dumps(tags or {})}
 }}
-'''
+"""
             main_tf = os.path.join(config_dir, "main.tf")
             with open(main_tf, "w") as f:
                 f.write(tf_config)
@@ -506,11 +452,7 @@ resource "azurerm_resource_group" "{name}" {{
                 subprocess.run(["terraform", "init"], cwd=config_dir, check=True, capture_output=True)
                 subprocess.run(["terraform", "apply", "-auto-approve"], cwd=config_dir, check=True, capture_output=True)
 
-                return ResourceGroup(
-                    name=name,
-                    location=location,
-                    tags=tags or {}
-                )
+                return ResourceGroup(name=name, location=location, tags=tags or {})
             except subprocess.CalledProcessError as e:
                 logger.error(f"Failed to create resource group: {e.stderr.decode() if e.stderr else str(e)}")
                 raise DeploymentError(f"Failed to create resource group: {name}")
@@ -518,11 +460,7 @@ resource "azurerm_resource_group" "{name}" {{
             # GCP doesn't have resource groups - projects are the equivalent
             # Just return a placeholder as GCP projects are managed differently
             logger.info(f"GCP does not use resource groups. Skipping creation for: {name}")
-            return ResourceGroup(
-                name=name,
-                location=location,
-                tags=tags or {}
-            )
+            return ResourceGroup(name=name, location=location, tags=tags or {})
 
     async def delete_resource_group(self, name: str) -> bool:
         """Delete resource group using Terraform."""
@@ -530,7 +468,9 @@ resource "azurerm_resource_group" "{name}" {{
 
         if self.cloud_platform == "azure" and os.path.exists(config_dir):
             try:
-                subprocess.run(["terraform", "destroy", "-auto-approve"], cwd=config_dir, check=True, capture_output=True)
+                subprocess.run(
+                    ["terraform", "destroy", "-auto-approve"], cwd=config_dir, check=True, capture_output=True
+                )
                 return True
             except subprocess.CalledProcessError as e:
                 logger.error(f"Failed to delete resource group: {e.stderr.decode() if e.stderr else str(e)}")
@@ -546,14 +486,10 @@ resource "azurerm_resource_group" "{name}" {{
         # Would need to parse Terraform state
         return []
 
-    async def validate_template(
-        self,
-        template_path: str,
-        parameters: Dict[str, Any]
-    ) -> tuple[bool, Optional[str]]:
+    async def validate_template(self, template_path: str, parameters: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """Validate template."""
         try:
-            with open(template_path, 'r') as f:
+            with open(template_path, "r") as f:
                 content = f.read()
             # Basic validation - check if it looks like valid Terraform
             if "resource" in content or "module" in content:

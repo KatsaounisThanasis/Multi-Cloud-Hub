@@ -6,9 +6,9 @@ This allows dynamic provider selection based on configuration or user preference
 """
 
 import logging
-from typing import Optional, Dict, Any
+from typing import Dict, Optional
 
-from .base import CloudProvider, ProviderType, ProviderConfigurationError
+from .base import CloudProvider, ProviderConfigurationError, ProviderType
 from .terraform_provider import TerraformProvider
 
 logger = logging.getLogger(__name__)
@@ -49,20 +49,14 @@ class ProviderFactory:
             ValueError: If provider_class doesn't inherit from CloudProvider
         """
         if not issubclass(provider_class, CloudProvider):
-            raise ValueError(
-                f"Provider class {provider_class.__name__} must inherit from CloudProvider"
-            )
+            raise ValueError(f"Provider class {provider_class.__name__} must inherit from CloudProvider")
 
         cls._providers[provider_name.lower()] = provider_class
         logger.info(f"Registered provider: {provider_name} -> {provider_class.__name__}")
 
     @classmethod
     def create_provider(
-        cls,
-        provider_type: str,
-        subscription_id: Optional[str] = None,
-        region: Optional[str] = None,
-        **kwargs
+        cls, provider_type: str, subscription_id: Optional[str] = None, region: Optional[str] = None, **kwargs
     ) -> CloudProvider:
         """
         Create a cloud provider instance.
@@ -85,26 +79,21 @@ class ProviderFactory:
             available = ", ".join(cls._providers.keys())
             raise ProviderConfigurationError(
                 f"Unsupported provider type: '{provider_type}'. Available providers: {available}",
-                provider=provider_type
+                provider=provider_type,
             )
 
         provider_class = cls._providers[provider_type_lower]
 
         try:
             logger.info(f"Creating provider instance: {provider_class.__name__}")
-            provider = provider_class(
-                subscription_id=subscription_id,
-                region=region,
-                **kwargs
-            )
+            provider = provider_class(subscription_id=subscription_id, region=region, **kwargs)
             logger.info(f"Provider created successfully: {provider_type}")
             return provider
 
         except Exception as e:
             logger.error(f"Failed to create provider '{provider_type}': {str(e)}")
             raise ProviderConfigurationError(
-                f"Failed to initialize {provider_type} provider: {str(e)}",
-                provider=provider_type
+                f"Failed to initialize {provider_type} provider: {str(e)}", provider=provider_type
             )
 
     @classmethod
@@ -133,10 +122,7 @@ class ProviderFactory:
 
 # Convenience function for creating providers
 def get_provider(
-    provider_type: str,
-    subscription_id: Optional[str] = None,
-    region: Optional[str] = None,
-    **kwargs
+    provider_type: str, subscription_id: Optional[str] = None, region: Optional[str] = None, **kwargs
 ) -> CloudProvider:
     """
     Convenience function to create a provider instance.
@@ -151,8 +137,5 @@ def get_provider(
         CloudProvider instance
     """
     return ProviderFactory.create_provider(
-        provider_type=provider_type,
-        subscription_id=subscription_id,
-        region=region,
-        **kwargs
+        provider_type=provider_type, subscription_id=subscription_id, region=region, **kwargs
     )

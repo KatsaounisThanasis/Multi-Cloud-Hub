@@ -2,10 +2,11 @@
 Pytest configuration and shared fixtures
 This file is automatically loaded by pytest
 """
-import pytest
 import os
 import sys
 from pathlib import Path
+
+import pytest
 
 # Add project root to Python path
 project_root = Path(__file__).parent
@@ -55,6 +56,7 @@ def pytest_collection_modifyitems(config, items):
 # Shared Fixtures
 # ============================================================================
 
+
 @pytest.fixture(scope="session")
 def project_root():
     """Get project root directory"""
@@ -102,17 +104,14 @@ def mock_azure_credentials():
         "subscription_id": "test-subscription-id",
         "tenant_id": "test-tenant-id",
         "client_id": "test-client-id",
-        "client_secret": "test-client-secret"
+        "client_secret": "test-client-secret",
     }
 
 
 @pytest.fixture
 def mock_gcp_credentials():
     """Mock GCP credentials for testing"""
-    return {
-        "project_id": "test-project-id",
-        "credentials_path": "/path/to/credentials.json"
-    }
+    return {"project_id": "test-project-id", "credentials_path": "/path/to/credentials.json"}
 
 
 @pytest.fixture
@@ -122,10 +121,7 @@ def sample_deployment_parameters():
         "storageAccountName": "teststorage123",
         "location": "eastus",
         "skuName": "Standard_LRS",
-        "tags": {
-            "environment": "test",
-            "purpose": "testing"
-        }
+        "tags": {"environment": "test", "purpose": "testing"},
     }
 
 
@@ -140,15 +136,9 @@ def sample_template_metadata():
         "category": "storage",
         "version": "1.0.0",
         "parameters": {
-            "storageAccountName": {
-                "type": "string",
-                "description": "Storage account name"
-            },
-            "location": {
-                "type": "string",
-                "default": "eastus"
-            }
-        }
+            "storageAccountName": {"type": "string", "description": "Storage account name"},
+            "location": {"type": "string", "default": "eastus"},
+        },
     }
 
 
@@ -156,9 +146,11 @@ def sample_template_metadata():
 # Test Helpers
 # ============================================================================
 
+
 @pytest.fixture
 def assert_valid_deployment_result():
     """Helper to validate DeploymentResult structure"""
+
     def _assert(result):
         assert hasattr(result, "success")
         assert hasattr(result, "deployment_id")
@@ -170,12 +162,14 @@ def assert_valid_deployment_result():
         if not result.success:
             assert hasattr(result, "error")
             assert result.error is not None
+
     return _assert
 
 
 @pytest.fixture
 def assert_valid_resource_group():
     """Helper to validate ResourceGroup structure"""
+
     def _assert(rg):
         assert hasattr(rg, "name")
         assert hasattr(rg, "location")
@@ -184,12 +178,14 @@ def assert_valid_resource_group():
         assert isinstance(rg.name, str)
         assert isinstance(rg.location, str)
         assert isinstance(rg.tags, dict)
+
     return _assert
 
 
 @pytest.fixture
 def assert_valid_cloud_resource():
     """Helper to validate CloudResource structure"""
+
     def _assert(resource):
         assert hasattr(resource, "name")
         assert hasattr(resource, "type")
@@ -197,6 +193,7 @@ def assert_valid_cloud_resource():
         assert hasattr(resource, "id")
         assert isinstance(resource.name, str)
         assert isinstance(resource.type, str)
+
     return _assert
 
 
@@ -204,12 +201,14 @@ def assert_valid_cloud_resource():
 # Skip Conditions
 # ============================================================================
 
+
 def pytest_runtest_setup(item):
     """Skip tests based on available services"""
     # Skip Docker tests if Docker is not available
     if "docker" in [mark.name for mark in item.iter_markers()]:
         try:
             import docker
+
             client = docker.from_env()
             client.ping()
         except Exception:
@@ -217,10 +216,7 @@ def pytest_runtest_setup(item):
 
     # Skip cloud provider tests if credentials not available
     if "azure" in [mark.name for mark in item.iter_markers()]:
-        if not all([
-            os.getenv("AZURE_SUBSCRIPTION_ID"),
-            os.getenv("AZURE_TENANT_ID")
-        ]):
+        if not all([os.getenv("AZURE_SUBSCRIPTION_ID"), os.getenv("AZURE_TENANT_ID")]):
             pytest.skip("Azure credentials not configured")
 
     if "gcp" in [mark.name for mark in item.iter_markers()]:
@@ -230,6 +226,7 @@ def pytest_runtest_setup(item):
     # Skip Terraform tests if Terraform is not installed
     if "terraform" in [mark.name for mark in item.iter_markers()]:
         import shutil
+
         if not shutil.which("terraform"):
             pytest.skip("Terraform CLI not installed")
 
@@ -238,8 +235,10 @@ def pytest_runtest_setup(item):
 # Logging Configuration for Tests
 # ============================================================================
 
+
 @pytest.fixture(autouse=True)
 def configure_test_logging(caplog):
     """Configure logging for tests"""
     import logging
+
     caplog.set_level(logging.DEBUG)

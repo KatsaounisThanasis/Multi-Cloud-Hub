@@ -4,10 +4,11 @@ Resource Groups Router
 Handles resource group creation, listing, and deletion.
 """
 
-from fastapi import APIRouter, Query, status
 import logging
 
-from backend.api.schemas import StandardResponse, ResourceGroupCreateRequest, success_response, error_response
+from fastapi import APIRouter, Query, status
+
+from backend.api.schemas import ResourceGroupCreateRequest, StandardResponse, error_response, success_response
 from backend.providers import get_provider
 
 logger = logging.getLogger(__name__)
@@ -18,7 +19,7 @@ router = APIRouter(prefix="/resource-groups", tags=["Resource Groups"])
 @router.get("", summary="List Resource Groups", response_model=StandardResponse)
 async def list_resource_groups(
     provider_type: str = Query("azure", description="Provider type"),
-    subscription_id: str = Query(..., description="Subscription/account ID")
+    subscription_id: str = Query(..., description="Subscription/account ID"),
 ):
     """List all resource groups/stacks in the subscription."""
     try:
@@ -32,8 +33,8 @@ async def list_resource_groups(
                     {"name": g.name, "location": g.location, "resource_count": g.resource_count, "tags": g.tags}
                     for g in groups
                 ],
-                "count": len(groups)
-            }
+                "count": len(groups),
+            },
         )
 
     except Exception as e:
@@ -46,15 +47,11 @@ async def create_resource_group(request: ResourceGroupCreateRequest):
     """Create a new resource group/stack."""
     try:
         provider = get_provider(request.provider_type, subscription_id=request.subscription_id)
-        group = await provider.create_resource_group(
-            name=request.name,
-            location=request.location,
-            tags=request.tags
-        )
+        group = await provider.create_resource_group(name=request.name, location=request.location, tags=request.tags)
 
         return success_response(
             message=f"Resource group '{request.name}' created",
-            data={"name": group.name, "location": group.location, "provider_id": group.provider_id}
+            data={"name": group.name, "location": group.location, "provider_id": group.provider_id},
         )
 
     except Exception as e:
@@ -66,7 +63,7 @@ async def create_resource_group(request: ResourceGroupCreateRequest):
 async def delete_resource_group(
     resource_group_name: str,
     provider_type: str = Query("azure", description="Provider type"),
-    subscription_id: str = Query(..., description="Subscription/account ID")
+    subscription_id: str = Query(..., description="Subscription/account ID"),
 ):
     """Delete a resource group and all its resources."""
     try:
@@ -76,7 +73,7 @@ async def delete_resource_group(
         if success:
             return success_response(
                 message=f"Resource group '{resource_group_name}' deletion initiated",
-                data={"resource_group": resource_group_name}
+                data={"resource_group": resource_group_name},
             )
         else:
             return error_response(f"Resource group '{resource_group_name}' not found", status_code=404)
@@ -90,7 +87,7 @@ async def delete_resource_group(
 async def list_resources_in_group(
     resource_group_name: str,
     provider_type: str = Query("azure", description="Provider type"),
-    subscription_id: str = Query(..., description="Subscription/account ID")
+    subscription_id: str = Query(..., description="Subscription/account ID"),
 ):
     """List all resources within a resource group."""
     try:
@@ -105,8 +102,8 @@ async def list_resources_in_group(
                     {"id": r.id, "name": r.name, "type": r.type, "location": r.location, "tags": r.tags}
                     for r in resources
                 ],
-                "count": len(resources)
-            }
+                "count": len(resources),
+            },
         )
 
     except Exception as e:

@@ -10,18 +10,19 @@ It parses parameter definitions, types, default values, descriptions,
 and validation rules to enable dynamic form generation.
 """
 
-import re
 import json
-from typing import Dict, List, Any, Optional, Union
-from pathlib import Path
-from enum import Enum
 import logging
+import re
+from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
 
 class ParameterType(str, Enum):
     """Parameter data types"""
+
     STRING = "string"
     INT = "int"
     BOOL = "bool"
@@ -47,7 +48,7 @@ class Parameter:
         min_length: Optional[int] = None,
         max_length: Optional[int] = None,
         pattern: Optional[str] = None,
-        validation_message: Optional[str] = None
+        validation_message: Optional[str] = None,
     ):
         self.name = name
         self.type = param_type
@@ -68,7 +69,7 @@ class Parameter:
             "name": self.name,
             "type": self.type.value,
             "description": self.description,
-            "required": self.required
+            "required": self.required,
         }
 
         if self.default is not None:
@@ -118,14 +119,14 @@ class BicepParameterParser:
         - default values
         """
         parameters = []
-        lines = content.split('\n')
+        lines = content.split("\n")
 
         i = 0
         while i < len(lines):
             line = lines[i].strip()
 
             # Check for parameter declaration
-            if line.startswith('param '):
+            if line.startswith("param "):
                 param = BicepParameterParser._parse_param_line(line, lines, i)
                 if param:
                     parameters.append(param)
@@ -148,19 +149,19 @@ class BicepParameterParser:
 
         # Look back for decorators
         j = line_index - 1
-        while j >= 0 and (all_lines[j].strip().startswith('@') or all_lines[j].strip() == ''):
+        while j >= 0 and (all_lines[j].strip().startswith("@") or all_lines[j].strip() == ""):
             decorator_line = all_lines[j].strip()
 
-            if decorator_line.startswith('@description('):
+            if decorator_line.startswith("@description("):
                 desc_match = re.search(r"@description\('([^']+)'\)", decorator_line)
                 if not desc_match:
                     desc_match = re.search(r'@description\("([^"]+)"\)', decorator_line)
                 if desc_match:
                     description = desc_match.group(1)
 
-            elif decorator_line.startswith('@allowed(['):
+            elif decorator_line.startswith("@allowed(["):
                 # Extract allowed values
-                allowed_match = re.search(r'@allowed\(\[(.*?)\]\)', decorator_line, re.DOTALL)
+                allowed_match = re.search(r"@allowed\(\[(.*?)\]\)", decorator_line, re.DOTALL)
                 if allowed_match:
                     values_str = allowed_match.group(1)
                     # Parse individual values
@@ -168,23 +169,23 @@ class BicepParameterParser:
                     for value in re.findall(r"'([^']+)'", values_str):
                         allowed_values.append(value)
 
-            elif '@minValue(' in decorator_line:
-                min_match = re.search(r'@minValue\((\d+)\)', decorator_line)
+            elif "@minValue(" in decorator_line:
+                min_match = re.search(r"@minValue\((\d+)\)", decorator_line)
                 if min_match:
                     min_value = int(min_match.group(1))
 
-            elif '@maxValue(' in decorator_line:
-                max_match = re.search(r'@maxValue\((\d+)\)', decorator_line)
+            elif "@maxValue(" in decorator_line:
+                max_match = re.search(r"@maxValue\((\d+)\)", decorator_line)
                 if max_match:
                     max_value = int(max_match.group(1))
 
-            elif '@minLength(' in decorator_line:
-                min_match = re.search(r'@minLength\((\d+)\)', decorator_line)
+            elif "@minLength(" in decorator_line:
+                min_match = re.search(r"@minLength\((\d+)\)", decorator_line)
                 if min_match:
                     min_length = int(min_match.group(1))
 
-            elif '@maxLength(' in decorator_line:
-                max_match = re.search(r'@maxLength\((\d+)\)', decorator_line)
+            elif "@maxLength(" in decorator_line:
+                max_match = re.search(r"@maxLength\((\d+)\)", decorator_line)
                 if max_match:
                     max_length = int(max_match.group(1))
 
@@ -192,7 +193,7 @@ class BicepParameterParser:
 
         # Parse the param line itself
         # Format: param <name> <type> [= <default>]
-        param_match = re.match(r'param\s+(\w+)\s+(\w+)(?:\s*=\s*(.+))?', line)
+        param_match = re.match(r"param\s+(\w+)\s+(\w+)(?:\s*=\s*(.+))?", line)
         if not param_match:
             return None
 
@@ -202,11 +203,11 @@ class BicepParameterParser:
 
         # Map Bicep types to ParameterType
         type_mapping = {
-            'string': ParameterType.STRING,
-            'int': ParameterType.INT,
-            'bool': ParameterType.BOOL,
-            'object': ParameterType.OBJECT,
-            'array': ParameterType.ARRAY
+            "string": ParameterType.STRING,
+            "int": ParameterType.INT,
+            "bool": ParameterType.BOOL,
+            "object": ParameterType.OBJECT,
+            "array": ParameterType.ARRAY,
         }
 
         param_type = type_mapping.get(param_type_str.lower(), ParameterType.STRING)
@@ -214,10 +215,7 @@ class BicepParameterParser:
         # Parse default value
         default_value = None
         if default_value_str:
-            default_value = BicepParameterParser._parse_default_value(
-                default_value_str.strip(),
-                param_type
-            )
+            default_value = BicepParameterParser._parse_default_value(default_value_str.strip(), param_type)
 
         return Parameter(
             name=param_name,
@@ -229,7 +227,7 @@ class BicepParameterParser:
             min_value=min_value,
             max_value=max_value,
             min_length=min_length,
-            max_length=max_length
+            max_length=max_length,
         )
 
     @staticmethod
@@ -238,7 +236,7 @@ class BicepParameterParser:
         value_str = value_str.strip()
 
         # Remove function calls like resourceGroup().location
-        if '(' in value_str:
+        if "(" in value_str:
             return None
 
         if param_type == ParameterType.STRING:
@@ -254,17 +252,17 @@ class BicepParameterParser:
                 return None
 
         elif param_type == ParameterType.BOOL:
-            return value_str.lower() == 'true'
+            return value_str.lower() == "true"
 
         elif param_type == ParameterType.OBJECT:
             # Handle empty object {}
-            if value_str == '{}':
+            if value_str == "{}":
                 return {}
             return None
 
         elif param_type == ParameterType.ARRAY:
             # Handle empty array []
-            if value_str == '[]':
+            if value_str == "[]":
                 return []
             return None
 
@@ -276,13 +274,13 @@ class ARMParameterParser:
 
     # Map ARM types to our parameter types
     TYPE_MAP = {
-        'string': ParameterType.STRING,
-        'securestring': ParameterType.STRING,
-        'int': ParameterType.INT,
-        'bool': ParameterType.BOOL,
-        'object': ParameterType.OBJECT,
-        'secureobject': ParameterType.OBJECT,
-        'array': ParameterType.ARRAY,
+        "string": ParameterType.STRING,
+        "securestring": ParameterType.STRING,
+        "int": ParameterType.INT,
+        "bool": ParameterType.BOOL,
+        "object": ParameterType.OBJECT,
+        "secureobject": ParameterType.OBJECT,
+        "array": ParameterType.ARRAY,
     }
 
     @staticmethod
@@ -315,7 +313,7 @@ class ARMParameterParser:
             return []
 
         # Get parameters section
-        params_section = template.get('parameters', {})
+        params_section = template.get("parameters", {})
 
         for param_name, param_def in params_section.items():
             param = ARMParameterParser._parse_parameter(param_name, param_def)
@@ -329,24 +327,24 @@ class ARMParameterParser:
         """Parse a single ARM parameter definition"""
 
         # Get type
-        arm_type = definition.get('type', 'string').lower()
+        arm_type = definition.get("type", "string").lower()
         param_type = ARMParameterParser.TYPE_MAP.get(arm_type, ParameterType.STRING)
 
         # Get description from metadata
-        metadata = definition.get('metadata', {})
-        description = metadata.get('description')
+        metadata = definition.get("metadata", {})
+        description = metadata.get("description")
 
         # Get default value
-        default = definition.get('defaultValue')
+        default = definition.get("defaultValue")
 
         # Get allowed values
-        allowed_values = definition.get('allowedValues')
+        allowed_values = definition.get("allowedValues")
 
         # Get constraints
-        min_value = definition.get('minValue')
-        max_value = definition.get('maxValue')
-        min_length = definition.get('minLength')
-        max_length = definition.get('maxLength')
+        min_value = definition.get("minValue")
+        max_value = definition.get("maxValue")
+        min_length = definition.get("minLength")
+        max_length = definition.get("maxLength")
 
         # Determine if required (no default value)
         required = default is None
@@ -361,7 +359,7 @@ class ARMParameterParser:
             min_value=min_value,
             max_value=max_value,
             min_length=min_length,
-            max_length=max_length
+            max_length=max_length,
         )
 
 
@@ -389,12 +387,12 @@ class TerraformParameterParser:
         for start_pos, var_name in var_starts:
             # Find the matching closing brace
             brace_count = 0
-            body_start = content.find('{', start_pos) + 1
+            body_start = content.find("{", start_pos) + 1
 
             for i in range(body_start, len(content)):
-                if content[i] == '{':
+                if content[i] == "{":
                     brace_count += 1
-                elif content[i] == '}':
+                elif content[i] == "}":
                     if brace_count == 0:
                         # Found the matching closing brace
                         var_body = content[body_start:i]
@@ -412,18 +410,18 @@ class TerraformParameterParser:
         """Parse a single variable block"""
 
         # Extract type
-        type_match = re.search(r'type\s*=\s*(\w+)', body)
-        param_type_str = type_match.group(1) if type_match else 'string'
+        type_match = re.search(r"type\s*=\s*(\w+)", body)
+        param_type_str = type_match.group(1) if type_match else "string"
 
         # Map Terraform types to ParameterType
         type_mapping = {
-            'string': ParameterType.STRING,
-            'number': ParameterType.NUMBER,
-            'bool': ParameterType.BOOL,
-            'map': ParameterType.MAP,
-            'list': ParameterType.ARRAY,
-            'object': ParameterType.OBJECT,
-            'any': ParameterType.STRING
+            "string": ParameterType.STRING,
+            "number": ParameterType.NUMBER,
+            "bool": ParameterType.BOOL,
+            "map": ParameterType.MAP,
+            "list": ParameterType.ARRAY,
+            "object": ParameterType.OBJECT,
+            "any": ParameterType.STRING,
         }
 
         param_type = type_mapping.get(param_type_str.lower(), ParameterType.STRING)
@@ -434,34 +432,25 @@ class TerraformParameterParser:
 
         # Extract default value - handle multi-line structures
         default_value = None
-        if 'default' in body:
+        if "default" in body:
             # For maps and objects, match the entire block including braces
             if param_type in [ParameterType.MAP, ParameterType.OBJECT]:
-                default_match = re.search(r'default\s*=\s*(\{[^}]*\})', body, re.DOTALL)
+                default_match = re.search(r"default\s*=\s*(\{[^}]*\})", body, re.DOTALL)
                 if default_match:
                     default_str = default_match.group(1).strip()
-                    default_value = TerraformParameterParser._parse_default_value(
-                        default_str,
-                        param_type
-                    )
+                    default_value = TerraformParameterParser._parse_default_value(default_str, param_type)
             # For arrays, match the entire list including brackets
             elif param_type == ParameterType.ARRAY:
-                default_match = re.search(r'default\s*=\s*(\[[^\]]*\])', body, re.DOTALL)
+                default_match = re.search(r"default\s*=\s*(\[[^\]]*\])", body, re.DOTALL)
                 if default_match:
                     default_str = default_match.group(1).strip()
-                    default_value = TerraformParameterParser._parse_default_value(
-                        default_str,
-                        param_type
-                    )
+                    default_value = TerraformParameterParser._parse_default_value(default_str, param_type)
             # For simple types, match until newline
             else:
-                default_match = re.search(r'default\s*=\s*(.+?)(?:\n|$)', body)
+                default_match = re.search(r"default\s*=\s*(.+?)(?:\n|$)", body)
                 if default_match:
                     default_str = default_match.group(1).strip()
-                    default_value = TerraformParameterParser._parse_default_value(
-                        default_str,
-                        param_type
-                    )
+                    default_value = TerraformParameterParser._parse_default_value(default_str, param_type)
 
         # Extract validation
         validation_pattern = None
@@ -469,21 +458,14 @@ class TerraformParameterParser:
         allowed_values = None
 
         # Check for contains([...]) validation (allowed values)
-        contains_match = re.search(
-            r'contains\(\s*\[(.*?)\]\s*,',
-            body,
-            re.DOTALL
-        )
+        contains_match = re.search(r"contains\(\s*\[(.*?)\]\s*,", body, re.DOTALL)
         if contains_match:
             values_str = contains_match.group(1)
             # Extract quoted values
             allowed_values = re.findall(r'"([^"]+)"', values_str)
 
         # Check for regex validation
-        validation_match = re.search(
-            r'validation\s*\{[^}]*condition\s*=\s*can\(regex\("([^"]+)"',
-            body
-        )
+        validation_match = re.search(r'validation\s*\{[^}]*condition\s*=\s*can\(regex\("([^"]+)"', body)
         if validation_match:
             validation_pattern = validation_match.group(1)
 
@@ -499,7 +481,7 @@ class TerraformParameterParser:
             required=(default_value is None),
             allowed_values=allowed_values,
             pattern=validation_pattern,
-            validation_message=validation_message
+            validation_message=validation_message,
         )
 
     @staticmethod
@@ -515,36 +497,36 @@ class TerraformParameterParser:
 
         elif param_type == ParameterType.NUMBER:
             try:
-                if '.' in value_str:
+                if "." in value_str:
                     return float(value_str)
                 return int(value_str)
             except ValueError:
                 return None
 
         elif param_type == ParameterType.BOOL:
-            return value_str.lower() == 'true'
+            return value_str.lower() == "true"
 
         elif param_type == ParameterType.MAP:
             # Try to parse maps
-            if value_str.startswith('{'):
+            if value_str.startswith("{"):
                 try:
                     # Extract the map content including multi-line
                     # Remove newlines and extra spaces for parsing
                     map_content = value_str.strip()
-                    if map_content == '{}':
+                    if map_content == "{}":
                         return {}
 
                     # For maps with content, return a simple empty map as default
                     # The actual values will be shown in description or ignored
                     # This indicates a default exists (so not required)
-                    if '}' in map_content:
+                    if "}" in map_content:
                         return {}
-                except:
+                except Exception:
                     pass
             return None
 
         elif param_type == ParameterType.ARRAY:
-            if value_str.startswith('[') and value_str.endswith(']'):
+            if value_str.startswith("[") and value_str.endswith("]"):
                 return []
             return None
 
@@ -566,13 +548,13 @@ class TemplateParameterParser:
         if not path.exists():
             raise FileNotFoundError(f"Template file not found: {file_path}")
 
-        content = path.read_text(encoding='utf-8')
+        content = path.read_text(encoding="utf-8")
 
-        if path.suffix == '.bicep':
+        if path.suffix == ".bicep":
             return BicepParameterParser.parse(content)
-        elif path.suffix == '.tf':
+        elif path.suffix == ".tf":
             return TerraformParameterParser.parse(content)
-        elif path.suffix == '.json':
+        elif path.suffix == ".json":
             return ARMParameterParser.parse(content)
         else:
             logger.warning(f"Unsupported template type: {path.suffix}")
@@ -587,11 +569,11 @@ class TemplateParameterParser:
             content: Template content
             template_type: 'bicep', 'terraform', or 'arm'
         """
-        if template_type == 'bicep':
+        if template_type == "bicep":
             return BicepParameterParser.parse(content)
-        elif template_type == 'terraform':
+        elif template_type == "terraform":
             return TerraformParameterParser.parse(content)
-        elif template_type == 'arm':
+        elif template_type == "arm":
             return ARMParameterParser.parse(content)
         else:
             raise ValueError(f"Unsupported template type: {template_type}")

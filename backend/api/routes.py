@@ -5,53 +5,52 @@ This is the main REST API application that imports and registers all routers.
 The actual endpoint implementations are in the routers/ directory.
 """
 
+import logging
+import os
+from datetime import datetime
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from datetime import datetime
-import os
-import logging
-
-# Import security middleware
-from backend.core.security import (
-    SecurityHeadersMiddleware,
-    RequestLoggingMiddleware,
-    RateLimitingMiddleware,
-    CSRFMiddleware,
-    get_cors_config,
-    security_config
-)
-
-# Import exception classes
-from backend.core.exceptions import MultiCloudException
-
-# Import database initialization
-from backend.core.database import init_db
-
-# Import auth initialization
-from backend.core.auth import initialize_default_users
-
-# Import template manager
-from backend.services.template_manager import TemplateManager
 
 # Import routers
 from backend.api.routers import (
     auth_router,
-    health_router,
-    templates_router,
-    deployments_router,
     azure_router,
-    gcp_router,
-    resource_groups_router,
     cloud_accounts_router,
-    metrics_router
+    deployments_router,
+    gcp_router,
+    health_router,
+    metrics_router,
+    resource_groups_router,
+    templates_router,
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+# Import auth initialization
+from backend.core.auth import initialize_default_users
+
+# Import database initialization
+from backend.core.database import init_db
+
+# Import exception classes
+from backend.core.exceptions import MultiCloudException
+
+# Import security middleware
+from backend.core.security import (
+    CSRFMiddleware,
+    RateLimitingMiddleware,
+    RequestLoggingMiddleware,
+    SecurityHeadersMiddleware,
+    get_cors_config,
+    security_config,
 )
+from backend.providers.base import DeploymentError
+
+# Import template manager
+from backend.services.template_manager import TemplateManager
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 # Initialize FastAPI with metadata
@@ -88,14 +87,8 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
-    contact={
-        "name": "GitHub Repository",
-        "url": "https://github.com/KatsaounisThanasis/Azure-Resource-Manager-Portal"
-    },
-    license_info={
-        "name": "Apache 2.0 License",
-        "url": "https://www.apache.org/licenses/LICENSE-2.0"
-    }
+    contact={"name": "GitHub Repository", "url": "https://github.com/KatsaounisThanasis/Azure-Resource-Manager-Portal"},
+    license_info={"name": "Apache 2.0 License", "url": "https://www.apache.org/licenses/LICENSE-2.0"},
 )
 
 # ================================================================
@@ -118,13 +111,10 @@ app.add_middleware(RequestLoggingMiddleware)
 cors_config = get_cors_config()
 app.add_middleware(CORSMiddleware, **cors_config)
 
-
-# Import DeploymentError for handler
-from backend.providers.base import DeploymentError
-
 # ================================================================
 # Global Exception Handlers
 # ================================================================
+
 
 @app.exception_handler(DeploymentError)
 async def deployment_error_handler(request: Request, exc: DeploymentError):
@@ -137,8 +127,8 @@ async def deployment_error_handler(request: Request, exc: DeploymentError):
             "success": False,
             "message": exc.get_friendly_message(),
             "error": friendly,
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            "timestamp": datetime.utcnow().isoformat(),
+        },
     )
 
 
@@ -153,8 +143,8 @@ async def multicloud_exception_handler(request: Request, exc: MultiCloudExceptio
             "success": False,
             "message": exc.get_friendly_message(),
             "error": friendly,
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            "timestamp": datetime.utcnow().isoformat(),
+        },
     )
 
 
@@ -168,11 +158,11 @@ async def general_exception_handler(request: Request, exc: Exception):
     # Try to parse the error for a friendlier message
     error_text = str(exc)
     friendly = parse_terraform_error(error_text)
-    friendly['code'] = "INTERNAL_SERVER_ERROR"
+    friendly["code"] = "INTERNAL_SERVER_ERROR"
 
     # In development, include more details
     if os.getenv("ENVIRONMENT") == "development":
-        friendly['original'] = error_text
+        friendly["original"] = error_text
 
     return JSONResponse(
         status_code=500,
@@ -180,8 +170,8 @@ async def general_exception_handler(request: Request, exc: Exception):
             "success": False,
             "message": f"{friendly.get('title', 'Error')} | {friendly.get('message', 'An unexpected error occurred')}",
             "error": friendly,
-            "timestamp": datetime.utcnow().isoformat()
-        }
+            "timestamp": datetime.utcnow().isoformat(),
+        },
     )
 
 
@@ -196,6 +186,7 @@ template_manager = TemplateManager(TEMPLATES_DIR)
 # ================================================================
 # Startup Event
 # ================================================================
+
 
 def validate_environment():
     """Validate required environment variables for production"""
@@ -278,4 +269,5 @@ app.include_router(metrics_router)
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

@@ -6,10 +6,11 @@ Provides common functionality for HTTP requests, authentication, and error handl
 """
 
 import logging
-import httpx
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional
 from datetime import datetime
+from typing import Any, Dict, Optional
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,6 @@ class BaseCloudAPIClient(ABC):
         Initialize cloud-specific credentials.
         Must be implemented by subclasses.
         """
-        pass
 
     @abstractmethod
     def _get_access_token(self) -> Optional[str]:
@@ -65,7 +65,6 @@ class BaseCloudAPIClient(ABC):
         Returns:
             Access token string or None if unavailable
         """
-        pass
 
     def _get_auth_headers(self) -> Dict[str, str]:
         """
@@ -89,7 +88,7 @@ class BaseCloudAPIClient(ABC):
         params: Optional[Dict[str, Any]] = None,
         json_data: Optional[Dict[str, Any]] = None,
         headers: Optional[Dict[str, str]] = None,
-        require_auth: bool = True
+        require_auth: bool = True,
     ) -> Optional[Dict[str, Any]]:
         """
         Make an HTTP request with error handling.
@@ -113,11 +112,7 @@ class BaseCloudAPIClient(ABC):
 
             # Make request
             response = await self.client.request(
-                method=method,
-                url=url,
-                params=params,
-                json=json_data,
-                headers=request_headers
+                method=method, url=url, params=params, json=json_data, headers=request_headers
             )
             response.raise_for_status()
 
@@ -134,10 +129,7 @@ class BaseCloudAPIClient(ABC):
             return None
 
     async def _get(
-        self,
-        url: str,
-        params: Optional[Dict[str, Any]] = None,
-        require_auth: bool = True
+        self, url: str, params: Optional[Dict[str, Any]] = None, require_auth: bool = True
     ) -> Optional[Dict[str, Any]]:
         """Convenience method for GET requests."""
         return await self._make_request("GET", url, params=params, require_auth=require_auth)
@@ -147,25 +139,18 @@ class BaseCloudAPIClient(ABC):
         url: str,
         json_data: Optional[Dict[str, Any]] = None,
         params: Optional[Dict[str, Any]] = None,
-        require_auth: bool = True
+        require_auth: bool = True,
     ) -> Optional[Dict[str, Any]]:
         """Convenience method for POST requests."""
         return await self._make_request("POST", url, params=params, json_data=json_data, require_auth=require_auth)
 
     async def _put(
-        self,
-        url: str,
-        json_data: Optional[Dict[str, Any]] = None,
-        require_auth: bool = True
+        self, url: str, json_data: Optional[Dict[str, Any]] = None, require_auth: bool = True
     ) -> Optional[Dict[str, Any]]:
         """Convenience method for PUT requests."""
         return await self._make_request("PUT", url, json_data=json_data, require_auth=require_auth)
 
-    async def _delete(
-        self,
-        url: str,
-        require_auth: bool = True
-    ) -> Optional[Dict[str, Any]]:
+    async def _delete(self, url: str, require_auth: bool = True) -> Optional[Dict[str, Any]]:
         """Convenience method for DELETE requests."""
         return await self._make_request("DELETE", url, require_auth=require_auth)
 

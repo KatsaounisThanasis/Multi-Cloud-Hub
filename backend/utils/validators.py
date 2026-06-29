@@ -4,13 +4,10 @@ Parameter Validation Module for Multi-Cloud Infrastructure Management
 This module provides validation logic for template parameters and deployment requests.
 """
 
-from typing import Dict, Any, List, Optional, Tuple
 import re
-from backend.core.exceptions import (
-    InvalidParameterError,
-    MissingParameterError,
-    ValidationError
-)
+from typing import Any, Dict, List, Optional, Tuple
+
+from backend.core.exceptions import InvalidParameterError, MissingParameterError, ValidationError
 
 
 class ParameterValidator:
@@ -20,20 +17,17 @@ class ParameterValidator:
 
     # Common regex patterns
     PATTERNS = {
-        'azure_resource_name': r'^[a-zA-Z0-9\-_]{1,64}$',
-        'azure_storage_account': r'^[a-z0-9]{3,24}$',
-        'gcp_resource_name': r'^[a-z]([-a-z0-9]*[a-z0-9])?$',
-        'gcp_project_id': r'^[a-z]([-a-z0-9]*[a-z0-9])?$',
-        'email': r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
-        'ipv4': r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$',
-        'cidr': r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/([0-9]|[12][0-9]|3[0-2])$',
+        "azure_resource_name": r"^[a-zA-Z0-9\-_]{1,64}$",
+        "azure_storage_account": r"^[a-z0-9]{3,24}$",
+        "gcp_resource_name": r"^[a-z]([-a-z0-9]*[a-z0-9])?$",
+        "gcp_project_id": r"^[a-z]([-a-z0-9]*[a-z0-9])?$",
+        "email": r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$",
+        "ipv4": r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$",
+        "cidr": r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)/([0-9]|[12][0-9]|3[0-2])$",
     }
 
     @staticmethod
-    def validate_required_fields(
-        parameters: Dict[str, Any],
-        required_fields: List[str]
-    ) -> None:
+    def validate_required_fields(parameters: Dict[str, Any], required_fields: List[str]) -> None:
         """
         Validate that all required fields are present.
 
@@ -41,15 +35,12 @@ class ParameterValidator:
             MissingParameterError: If a required field is missing
         """
         for field in required_fields:
-            if field not in parameters or parameters[field] is None or parameters[field] == '':
+            if field not in parameters or parameters[field] is None or parameters[field] == "":
                 raise MissingParameterError(field)
 
     @staticmethod
     def validate_string_length(
-        value: str,
-        param_name: str,
-        min_length: Optional[int] = None,
-        max_length: Optional[int] = None
+        value: str, param_name: str, min_length: Optional[int] = None, max_length: Optional[int] = None
     ) -> None:
         """
         Validate string length constraints.
@@ -63,23 +54,14 @@ class ParameterValidator:
         length = len(value)
 
         if min_length is not None and length < min_length:
-            raise InvalidParameterError(
-                param_name,
-                f"Must be at least {min_length} characters (got {length})"
-            )
+            raise InvalidParameterError(param_name, f"Must be at least {min_length} characters (got {length})")
 
         if max_length is not None and length > max_length:
-            raise InvalidParameterError(
-                param_name,
-                f"Must be at most {max_length} characters (got {length})"
-            )
+            raise InvalidParameterError(param_name, f"Must be at most {max_length} characters (got {length})")
 
     @staticmethod
     def validate_pattern(
-        value: str,
-        param_name: str,
-        pattern: str,
-        pattern_description: str = "the required format"
+        value: str, param_name: str, pattern: str, pattern_description: str = "the required format"
     ) -> None:
         """
         Validate string against a regex pattern.
@@ -91,17 +73,10 @@ class ParameterValidator:
             raise InvalidParameterError(param_name, "Must be a string")
 
         if not re.match(pattern, value):
-            raise InvalidParameterError(
-                param_name,
-                f"Must match {pattern_description}"
-            )
+            raise InvalidParameterError(param_name, f"Must match {pattern_description}")
 
     @staticmethod
-    def validate_enum(
-        value: str,
-        param_name: str,
-        allowed_values: List[str]
-    ) -> None:
+    def validate_enum(value: str, param_name: str, allowed_values: List[str]) -> None:
         """
         Validate that value is one of the allowed values.
 
@@ -109,17 +84,11 @@ class ParameterValidator:
             InvalidParameterError: If value is not in allowed_values
         """
         if value not in allowed_values:
-            raise InvalidParameterError(
-                param_name,
-                f"Must be one of: {', '.join(allowed_values)}"
-            )
+            raise InvalidParameterError(param_name, f"Must be one of: {', '.join(allowed_values)}")
 
     @staticmethod
     def validate_integer_range(
-        value: int,
-        param_name: str,
-        min_value: Optional[int] = None,
-        max_value: Optional[int] = None
+        value: int, param_name: str, min_value: Optional[int] = None, max_value: Optional[int] = None
     ) -> None:
         """
         Validate integer range constraints.
@@ -131,16 +100,10 @@ class ParameterValidator:
             raise InvalidParameterError(param_name, "Must be an integer")
 
         if min_value is not None and value < min_value:
-            raise InvalidParameterError(
-                param_name,
-                f"Must be at least {min_value} (got {value})"
-            )
+            raise InvalidParameterError(param_name, f"Must be at least {min_value} (got {value})")
 
         if max_value is not None and value > max_value:
-            raise InvalidParameterError(
-                param_name,
-                f"Must be at most {max_value} (got {value})"
-            )
+            raise InvalidParameterError(param_name, f"Must be at most {max_value} (got {value})")
 
     @staticmethod
     def validate_azure_storage_account_name(name: str) -> None:
@@ -155,12 +118,12 @@ class ParameterValidator:
         Raises:
             InvalidParameterError: If validation fails
         """
-        ParameterValidator.validate_string_length(name, 'storage_account_name', 3, 24)
+        ParameterValidator.validate_string_length(name, "storage_account_name", 3, 24)
         ParameterValidator.validate_pattern(
             name,
-            'storage_account_name',
-            ParameterValidator.PATTERNS['azure_storage_account'],
-            "lowercase letters and numbers only"
+            "storage_account_name",
+            ParameterValidator.PATTERNS["azure_storage_account"],
+            "lowercase letters and numbers only",
         )
 
     @staticmethod
@@ -176,22 +139,18 @@ class ParameterValidator:
         Raises:
             InvalidParameterError: If validation fails
         """
-        ParameterValidator.validate_string_length(name, 'resource_group', 1, 90)
+        ParameterValidator.validate_string_length(name, "resource_group", 1, 90)
 
-        if name.endswith('.'):
-            raise InvalidParameterError(
-                'resource_group',
-                "Cannot end with a period"
-            )
+        if name.endswith("."):
+            raise InvalidParameterError("resource_group", "Cannot end with a period")
 
-        if not re.match(r'^[\w\-\.\(\)]+$', name):
+        if not re.match(r"^[\w\-\.\(\)]+$", name):
             raise InvalidParameterError(
-                'resource_group',
-                "Can only contain alphanumerics, underscores, hyphens, periods, and parentheses"
+                "resource_group", "Can only contain alphanumerics, underscores, hyphens, periods, and parentheses"
             )
 
     @staticmethod
-    def validate_gcp_resource_name(name: str, param_name: str = 'resource_name') -> None:
+    def validate_gcp_resource_name(name: str, param_name: str = "resource_name") -> None:
         """
         Validate GCP resource naming rules.
 
@@ -206,8 +165,8 @@ class ParameterValidator:
         ParameterValidator.validate_pattern(
             name,
             param_name,
-            ParameterValidator.PATTERNS['gcp_resource_name'],
-            "lowercase letters, numbers, hyphens; must start with letter"
+            ParameterValidator.PATTERNS["gcp_resource_name"],
+            "lowercase letters, numbers, hyphens; must start with letter",
         )
 
     @staticmethod
@@ -224,11 +183,11 @@ class ParameterValidator:
         Raises:
             InvalidParameterError: If validation fails
         """
-        ParameterValidator.validate_string_length(project_id, 'project_id', 6, 30)
-        ParameterValidator.validate_gcp_resource_name(project_id, 'project_id')
+        ParameterValidator.validate_string_length(project_id, "project_id", 6, 30)
+        ParameterValidator.validate_gcp_resource_name(project_id, "project_id")
 
     @staticmethod
-    def validate_ip_address(ip: str, param_name: str = 'ip_address') -> None:
+    def validate_ip_address(ip: str, param_name: str = "ip_address") -> None:
         """
         Validate IPv4 address format.
 
@@ -236,14 +195,11 @@ class ParameterValidator:
             InvalidParameterError: If not a valid IPv4 address
         """
         ParameterValidator.validate_pattern(
-            ip,
-            param_name,
-            ParameterValidator.PATTERNS['ipv4'],
-            "valid IPv4 address (e.g., 192.168.1.1)"
+            ip, param_name, ParameterValidator.PATTERNS["ipv4"], "valid IPv4 address (e.g., 192.168.1.1)"
         )
 
     @staticmethod
-    def validate_cidr(cidr: str, param_name: str = 'cidr_block') -> None:
+    def validate_cidr(cidr: str, param_name: str = "cidr_block") -> None:
         """
         Validate CIDR notation.
 
@@ -251,10 +207,7 @@ class ParameterValidator:
             InvalidParameterError: If not valid CIDR notation
         """
         ParameterValidator.validate_pattern(
-            cidr,
-            param_name,
-            ParameterValidator.PATTERNS['cidr'],
-            "valid CIDR notation (e.g., 10.0.0.0/16)"
+            cidr, param_name, ParameterValidator.PATTERNS["cidr"], "valid CIDR notation (e.g., 10.0.0.0/16)"
         )
 
 
@@ -265,11 +218,7 @@ class DeploymentRequestValidator:
 
     @staticmethod
     def validate_deployment_request(
-        provider_type: str,
-        template_name: str,
-        resource_group: str,
-        location: str,
-        parameters: Dict[str, Any]
+        provider_type: str, template_name: str, resource_group: str, location: str, parameters: Dict[str, Any]
     ) -> Tuple[bool, Optional[str]]:
         """
         Validate a complete deployment request.
@@ -280,19 +229,19 @@ class DeploymentRequestValidator:
         try:
             # Validate core fields
             if not provider_type:
-                raise ValidationError('provider_type', 'Provider type is required')
+                raise ValidationError("provider_type", "Provider type is required")
 
             if not template_name:
-                raise ValidationError('template_name', 'Template name is required')
+                raise ValidationError("template_name", "Template name is required")
 
             if not resource_group:
-                raise ValidationError('resource_group', 'Resource group is required')
+                raise ValidationError("resource_group", "Resource group is required")
 
             if not location:
-                raise ValidationError('location', 'Location is required')
+                raise ValidationError("location", "Location is required")
 
             # Provider-specific validation
-            if 'azure' in provider_type.lower():
+            if "azure" in provider_type.lower():
                 ParameterValidator.validate_azure_resource_group_name(resource_group)
 
             return True, None
@@ -315,11 +264,11 @@ def validate_gcp_bucket_name(name: str) -> None:
 
     Rules similar to GCP resource names but with additional constraints.
     """
-    ParameterValidator.validate_string_length(name, 'bucket_name', 3, 63)
-    ParameterValidator.validate_gcp_resource_name(name, 'bucket_name')
+    ParameterValidator.validate_string_length(name, "bucket_name", 3, 63)
+    ParameterValidator.validate_gcp_resource_name(name, "bucket_name")
 
 
-def validate_app_name(name: str, param_name: str = 'app_name') -> None:
+def validate_app_name(name: str, param_name: str = "app_name") -> None:
     """
     Validate application/deployment name.
 
@@ -338,9 +287,27 @@ def validate_app_name(name: str, param_name: str = 'app_name') -> None:
 
     # Reserved words to avoid conflicts or ambiguity
     RESERVED_WORDS = {
-        'admin', 'administrator', 'root', 'system', 'user', 'test', 'demo', 
-        'backup', 'restore', 'api', 'db', 'database', 'app', 'application', 
-        'server', 'client', 'null', 'none', 'default', 'config', 'setup'
+        "admin",
+        "administrator",
+        "root",
+        "system",
+        "user",
+        "test",
+        "demo",
+        "backup",
+        "restore",
+        "api",
+        "db",
+        "database",
+        "app",
+        "application",
+        "server",
+        "client",
+        "null",
+        "none",
+        "default",
+        "config",
+        "setup",
     }
 
     if name.lower() in RESERVED_WORDS:
@@ -353,12 +320,9 @@ def validate_app_name(name: str, param_name: str = 'app_name') -> None:
         raise InvalidParameterError(param_name, "Must start with a letter")
 
     # Cannot end with hyphen or underscore
-    if name[-1] in '-_':
+    if name[-1] in "-_":
         raise InvalidParameterError(param_name, "Cannot end with hyphen or underscore")
 
     # Only alphanumerics, hyphens, underscores
-    if not re.match(r'^[a-zA-Z][a-zA-Z0-9\-_]*[a-zA-Z0-9]$|^[a-zA-Z]$', name):
-        raise InvalidParameterError(
-            param_name,
-            "Only letters, numbers, hyphens, and underscores allowed"
-        )
+    if not re.match(r"^[a-zA-Z][a-zA-Z0-9\-_]*[a-zA-Z0-9]$|^[a-zA-Z]$", name):
+        raise InvalidParameterError(param_name, "Only letters, numbers, hyphens, and underscores allowed")

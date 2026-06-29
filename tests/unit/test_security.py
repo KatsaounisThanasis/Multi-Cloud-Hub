@@ -1,15 +1,8 @@
 """
 Unit tests for core/security.py module
 """
-import pytest
-from unittest.mock import patch, MagicMock
 
-from backend.core.security import (
-    SecurityConfig,
-    validate_deployment_parameters,
-    mask_sensitive_data,
-    get_cors_config
-)
+from backend.core.security import SecurityConfig, get_cors_config, mask_sensitive_data, validate_deployment_parameters
 
 
 class TestSecurityConfig:
@@ -18,12 +11,12 @@ class TestSecurityConfig:
     def test_initialization(self):
         """Test SecurityConfig initialization."""
         config = SecurityConfig()
-        assert hasattr(config, 'environment')
+        assert hasattr(config, "environment")
 
     def test_environment_property(self):
         """Test environment property."""
         config = SecurityConfig()
-        assert config.environment in ['development', 'staging', 'production', 'test']
+        assert config.environment in ["development", "staging", "production", "test"]
 
 
 class TestValidateDeploymentParameters:
@@ -31,10 +24,7 @@ class TestValidateDeploymentParameters:
 
     def test_valid_parameters(self):
         """Test validation of valid parameters."""
-        params = {
-            "name": "test-resource",
-            "location": "eastus"
-        }
+        params = {"name": "test-resource", "location": "eastus"}
         is_valid, error = validate_deployment_parameters(params)
         assert is_valid is True
         assert error is None

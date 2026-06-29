@@ -4,18 +4,18 @@ Database Models and Configuration for Multi-Cloud Infrastructure Management
 This module defines the database schema for tracking deployments, state, and history.
 """
 
-from sqlalchemy import create_engine, Column, String, DateTime, Text, JSON, Enum as SQLEnum
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from datetime import datetime
 import enum
 import os
+from datetime import datetime
+
+from sqlalchemy import JSON, Column, DateTime
+from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import String, Text, create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 # Database URL from environment or default to SQLite for development
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres@localhost:5432/cloud_manager"
-)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/cloud_manager")
 
 # For SQLite fallback in development
 if not DATABASE_URL.startswith("postgresql"):
@@ -28,6 +28,7 @@ Base = declarative_base()
 
 class DeploymentStatus(str, enum.Enum):
     """Deployment status enumeration"""
+
     PENDING = "pending"
     RUNNING = "running"
     COMPLETED = "completed"
@@ -41,6 +42,7 @@ class Deployment(Base):
 
     Stores information about infrastructure deployments across all cloud providers.
     """
+
     __tablename__ = "deployments"
 
     # Primary key
@@ -91,7 +93,7 @@ class Deployment(Base):
             "outputs": self.outputs,
             "tags": self.tags or [],
             "error_message": self.error_message,
-            "celery_task_id": self.celery_task_id
+            "celery_task_id": self.celery_task_id,
         }
 
 
@@ -101,6 +103,7 @@ class TerraformState(Base):
 
     Stores metadata about Terraform state files for state management.
     """
+
     __tablename__ = "terraform_states"
 
     # Primary key - links to deployment
@@ -125,7 +128,7 @@ class TerraformState(Base):
             "backend_config": self.backend_config,
             "state_version": self.state_version,
             "last_modified": self.last_modified.isoformat() if self.last_modified else None,
-            "workspace": self.workspace
+            "workspace": self.workspace,
         }
 
 
@@ -154,6 +157,7 @@ class CloudAccount(Base):
     """
     Cloud Account model for managing multiple Azure subscriptions / GCP projects
     """
+
     __tablename__ = "cloud_accounts"
 
     id = Column(String(50), primary_key=True, index=True)
@@ -171,7 +175,7 @@ class CloudAccount(Base):
     region = Column(String(50), nullable=True)
 
     # Metadata
-    is_active = Column(String(10), default='true')
+    is_active = Column(String(10), default="true")
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     created_by = Column(String(200), nullable=True)  # Admin email
 
@@ -186,9 +190,9 @@ class CloudAccount(Base):
             "client_id": self.client_id,
             "project_id": self.project_id,
             "region": self.region,
-            "is_active": self.is_active == 'true',
+            "is_active": self.is_active == "true",
             "created_at": self.created_at.isoformat() if self.created_at else None,
-            "created_by": self.created_by
+            "created_by": self.created_by,
         }
         if include_secrets:
             data["client_secret"] = self.client_secret
@@ -199,13 +203,14 @@ class UserCloudPermission(Base):
     """
     User permissions for cloud accounts
     """
+
     __tablename__ = "user_cloud_permissions"
 
     id = Column(String(50), primary_key=True, index=True)
     user_email = Column(String(200), nullable=False, index=True)
     cloud_account_id = Column(String(50), nullable=False, index=True)
-    can_deploy = Column(String(10), default='true')  # Can create deployments
-    can_view = Column(String(10), default='true')    # Can view deployments
+    can_deploy = Column(String(10), default="true")  # Can create deployments
+    can_view = Column(String(10), default="true")  # Can view deployments
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     def to_dict(self):
@@ -213,9 +218,9 @@ class UserCloudPermission(Base):
             "id": self.id,
             "user_email": self.user_email,
             "cloud_account_id": self.cloud_account_id,
-            "can_deploy": self.can_deploy == 'true',
-            "can_view": self.can_view == 'true',
-            "created_at": self.created_at.isoformat() if self.created_at else None
+            "can_deploy": self.can_deploy == "true",
+            "can_view": self.can_view == "true",
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 

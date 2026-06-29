@@ -6,14 +6,15 @@ ensuring a consistent interface across Azure, GCP, and other cloud platforms.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 
 class ProviderType(Enum):
     """Supported cloud provider types."""
+
     AZURE = "azure"
     GCP = "gcp"
     TERRAFORM = "terraform"
@@ -21,6 +22,7 @@ class ProviderType(Enum):
 
 class DeploymentStatus(Enum):
     """Deployment status states."""
+
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
     SUCCEEDED = "succeeded"
@@ -43,6 +45,7 @@ class DeploymentResult:
         timestamp: When the deployment was initiated
         provider_metadata: Provider-specific additional data
     """
+
     deployment_id: str
     status: DeploymentStatus
     resource_group: str
@@ -65,6 +68,7 @@ class ResourceGroup:
         resource_count: Number of resources in the group
         provider_id: Provider-specific identifier
     """
+
     name: str
     location: str
     tags: Optional[Dict[str, str]] = None
@@ -86,6 +90,7 @@ class CloudResource:
         properties: Resource-specific properties
         tags: Resource tags/labels
     """
+
     id: str
     name: str
     type: str
@@ -122,7 +127,7 @@ class CloudProvider(ABC):
         resource_group: str,
         location: str,
         deployment_name: Optional[str] = None,
-        deployment_id: Optional[str] = None
+        deployment_id: Optional[str] = None,
     ) -> DeploymentResult:
         """
         Deploy a template to the cloud provider.
@@ -140,14 +145,9 @@ class CloudProvider(ABC):
         Raises:
             DeploymentError: If deployment fails
         """
-        pass
 
     @abstractmethod
-    async def get_deployment_status(
-        self,
-        deployment_id: str,
-        resource_group: str
-    ) -> DeploymentStatus:
+    async def get_deployment_status(self, deployment_id: str, resource_group: str) -> DeploymentStatus:
         """
         Get the current status of a deployment.
 
@@ -158,7 +158,6 @@ class CloudProvider(ABC):
         Returns:
             Current deployment status
         """
-        pass
 
     @abstractmethod
     async def list_resource_groups(self) -> List[ResourceGroup]:
@@ -168,14 +167,10 @@ class CloudProvider(ABC):
         Returns:
             List of ResourceGroup objects
         """
-        pass
 
     @abstractmethod
     async def create_resource_group(
-        self,
-        name: str,
-        location: str,
-        tags: Optional[Dict[str, str]] = None
+        self, name: str, location: str, tags: Optional[Dict[str, str]] = None
     ) -> ResourceGroup:
         """
         Create a new resource group/stack.
@@ -188,7 +183,6 @@ class CloudProvider(ABC):
         Returns:
             Created ResourceGroup object
         """
-        pass
 
     @abstractmethod
     async def delete_resource_group(self, name: str) -> bool:
@@ -201,7 +195,6 @@ class CloudProvider(ABC):
         Returns:
             True if deletion was initiated successfully
         """
-        pass
 
     @abstractmethod
     async def list_resources(self, resource_group: str) -> List[CloudResource]:
@@ -214,14 +207,9 @@ class CloudProvider(ABC):
         Returns:
             List of CloudResource objects
         """
-        pass
 
     @abstractmethod
-    async def validate_template(
-        self,
-        template_path: str,
-        parameters: Dict[str, Any]
-    ) -> tuple[bool, Optional[str]]:
+    async def validate_template(self, template_path: str, parameters: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """
         Validate a template before deployment.
 
@@ -232,7 +220,6 @@ class CloudProvider(ABC):
         Returns:
             Tuple of (is_valid, error_message)
         """
-        pass
 
     @abstractmethod
     def get_supported_locations(self) -> List[str]:
@@ -242,7 +229,6 @@ class CloudProvider(ABC):
         Returns:
             List of location identifiers
         """
-        pass
 
     @abstractmethod
     def get_provider_type(self) -> ProviderType:
@@ -252,7 +238,6 @@ class CloudProvider(ABC):
         Returns:
             ProviderType enum value
         """
-        pass
 
     def format_parameters(self, parameters: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -282,18 +267,19 @@ class DeploymentError(Exception):
     def get_friendly_error(self) -> Dict[str, Any]:
         """Parse and return user-friendly error dict."""
         from backend.core.error_parser import parse_terraform_error
+
         parsed = parse_terraform_error(self.message)
-        parsed['provider'] = self.provider
+        parsed["provider"] = self.provider
         return parsed
 
     def get_friendly_message(self) -> str:
         """Get formatted friendly message string."""
         parsed = self.get_friendly_error()
-        parts = [parsed.get('title', 'Error'), parsed.get('message', self.message)]
-        if parsed.get('solution'):
+        parts = [parsed.get("title", "Error"), parsed.get("message", self.message)]
+        if parsed.get("solution"):
             parts.append(f"Solution: {parsed['solution']}")
-        if parsed.get('example'):
-            parts.append(parsed['example'])
+        if parsed.get("example"):
+            parts.append(parsed["example"])
         return " | ".join(parts)
 
 
@@ -308,16 +294,17 @@ class ProviderConfigurationError(Exception):
     def get_friendly_error(self) -> Dict[str, Any]:
         """Parse and return user-friendly error dict."""
         from backend.core.error_parser import parse_terraform_error
+
         parsed = parse_terraform_error(self.message)
-        parsed['provider'] = self.provider
+        parsed["provider"] = self.provider
         return parsed
 
     def get_friendly_message(self) -> str:
         """Get formatted friendly message string."""
         parsed = self.get_friendly_error()
-        parts = [parsed.get('title', 'Error'), parsed.get('message', self.message)]
-        if parsed.get('solution'):
+        parts = [parsed.get("title", "Error"), parsed.get("message", self.message)]
+        if parsed.get("solution"):
             parts.append(f"Solution: {parsed['solution']}")
-        if parsed.get('example'):
-            parts.append(parsed['example'])
+        if parsed.get("example"):
+            parts.append(parsed["example"])
         return " | ".join(parts)

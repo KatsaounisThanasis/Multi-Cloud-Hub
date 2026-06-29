@@ -1,42 +1,35 @@
-import pytest
 import json
-from pathlib import Path
-from unittest.mock import patch, mock_open
+from unittest.mock import patch
+
+import pytest
+
 from backend.services.parameter_parser import (
+    ARMParameterParser,
+    BicepParameterParser,
     Parameter,
     ParameterType,
-    BicepParameterParser,
-    ARMParameterParser,
+    TemplateParameterParser,
     TerraformParameterParser,
-    TemplateParameterParser
 )
+
 
 class TestParameterClass:
     def test_parameter_initialization(self):
         param = Parameter(
-            name="test_param",
-            param_type=ParameterType.STRING,
-            description="A test parameter",
-            default="default_val"
+            name="test_param", param_type=ParameterType.STRING, description="A test parameter", default="default_val"
         )
         assert param.name == "test_param"
         assert param.type == ParameterType.STRING
         assert param.required is False  # Since default is provided
 
     def test_parameter_to_dict(self):
-        param = Parameter(
-            name="count",
-            param_type=ParameterType.INT,
-            default=1,
-            min_value=1,
-            max_value=10
-        )
+        param = Parameter(name="count", param_type=ParameterType.INT, default=1, min_value=1, max_value=10)
         data = param.to_dict()
-        assert data['name'] == "count"
-        assert data['type'] == "int"
-        assert data['default'] == 1
-        assert data['min_value'] == 1
-        assert data['max_value'] == 10
+        assert data["name"] == "count"
+        assert data["type"] == "int"
+        assert data["default"] == 1
+        assert data["min_value"] == 1
+        assert data["max_value"] == 10
 
 
 class TestBicepParser:
@@ -71,29 +64,29 @@ class TestBicepParser:
 
 class TestARMParser:
     def test_parse_arm_json(self):
-        content = json.dumps({
-            "parameters": {
-                "adminUsername": {
-                    "type": "string",
-                    "metadata": {
-                        "description": "User name for the Virtual Machine."
-                    }
-                },
-                "vmSize": {
-                    "type": "string",
-                    "defaultValue": "Standard_D2s_v3",
-                    "allowedValues": ["Standard_D2s_v3", "Standard_D4s_v3"]
+        content = json.dumps(
+            {
+                "parameters": {
+                    "adminUsername": {
+                        "type": "string",
+                        "metadata": {"description": "User name for the Virtual Machine."},
+                    },
+                    "vmSize": {
+                        "type": "string",
+                        "defaultValue": "Standard_D2s_v3",
+                        "allowedValues": ["Standard_D2s_v3", "Standard_D4s_v3"],
+                    },
                 }
             }
-        })
+        )
         params = ARMParameterParser.parse(content)
         assert len(params) == 2
-        
+
         # Check adminUsername
         p1 = next(p for p in params if p.name == "adminUsername")
         assert p1.required is True
         assert "User name" in p1.description
-        
+
         # Check vmSize
         p2 = next(p for p in params if p.name == "vmSize")
         assert p2.default == "Standard_D2s_v3"
@@ -111,7 +104,7 @@ class TestTerraformParser:
           description = "Name of the resource group"
           type        = string
         }
-        
+
         variable "location" {
           description = "Azure region"
           type        = string
@@ -120,11 +113,11 @@ class TestTerraformParser:
         """
         params = TerraformParameterParser.parse(content)
         assert len(params) == 2
-        
+
         p1 = next(p for p in params if p.name == "resource_group_name")
         assert p1.required is True
         assert "Name of the resource group" in p1.description
-        
+
         p2 = next(p for p in params if p.name == "location")
         assert p2.default == "eastus"
         assert p2.required is False
@@ -146,17 +139,17 @@ class TestTerraformParser:
 
 
 class TestTemplateParameterParser:
-    @patch('pathlib.Path.read_text')
-    @patch('pathlib.Path.exists')
+    @patch("pathlib.Path.read_text")
+    @patch("pathlib.Path.exists")
     def test_parse_file_bicep(self, mock_exists, mock_read):
         mock_exists.return_value = True
         mock_read.return_value = "param test string"
-        
-        with patch('pathlib.Path.suffix', '.bicep'):
-             # We need to mock suffix on an instance, but Path is hard to mock directly this way
-             # Instead, we'll test the parse_content method which is used by parse_file
-             params = TemplateParameterParser.parse_content("param test string", "bicep")
-             assert len(params) == 1
+
+        with patch("pathlib.Path.suffix", ".bicep"):
+            # We need to mock suffix on an instance, but Path is hard to mock directly this way
+            # Instead, we'll test the parse_content method which is used by parse_file
+            params = TemplateParameterParser.parse_content("param test string", "bicep")
+            assert len(params) == 1
 
     def test_parse_content_dispatch(self):
         tf_content = 'variable "test" { type = string }'

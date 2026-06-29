@@ -6,39 +6,44 @@ Supports three roles: admin, user, viewer
 """
 
 import os
-import jwt
-import bcrypt
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any, List
-from fastapi import HTTPException, Header
+from typing import Any, Dict, List, Optional
+
+import bcrypt
+import jwt
+from fastapi import Header, HTTPException
 from pydantic import BaseModel, EmailStr, validator
 
 # JWT Configuration
-SECRET_KEY = os.getenv('JWT_SECRET_KEY')
+SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 if not SECRET_KEY:
     import secrets
+
     SECRET_KEY = secrets.token_hex(32)
     print("⚠️  WARNING: JWT_SECRET_KEY not set. Using random key (sessions won't persist across restarts)")
 
-ALGORITHM = 'HS256'
+ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+
 
 # User Roles
 class UserRole:
-    ADMIN = 'admin'
-    USER = 'user'
-    VIEWER = 'viewer'
+    ADMIN = "admin"
+    USER = "user"
+    VIEWER = "viewer"
 
     @classmethod
     def all_roles(cls) -> List[str]:
         return [cls.ADMIN, cls.USER, cls.VIEWER]
 
+
 # Role Permissions
 ROLE_PERMISSIONS = {
-    UserRole.ADMIN: ['read', 'write', 'delete', 'manage_users'],
-    UserRole.USER: ['read', 'write'],
-    UserRole.VIEWER: ['read']
+    UserRole.ADMIN: ["read", "write", "delete", "manage_users"],
+    UserRole.USER: ["read", "write"],
+    UserRole.VIEWER: ["read"],
 }
+
 
 # Pydantic Models
 class UserCreate(BaseModel):
@@ -47,21 +52,23 @@ class UserCreate(BaseModel):
     username: str
     role: str = UserRole.USER
 
-    @validator('password')
+    @validator("password")
     def validate_password(cls, v):
         if len(v) < 6:
-            raise ValueError('Password must be at least 6 characters')
+            raise ValueError("Password must be at least 6 characters")
         return v
 
-    @validator('role')
+    @validator("role")
     def validate_role(cls, v):
         if v not in UserRole.all_roles():
             raise ValueError(f'Role must be one of: {", ".join(UserRole.all_roles())}')
         return v
 
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
 
 class UserResponse(BaseModel):
     id: int
@@ -71,40 +78,43 @@ class UserResponse(BaseModel):
     permissions: List[str] = []
     created_at: datetime
 
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: Dict[str, Any]
+
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     password: Optional[str] = None
     role: Optional[str] = None
 
-    @validator('password')
+    @validator("password")
     def validate_password(cls, v):
         if v and len(v) < 6:
-            raise ValueError('Password must be at least 6 characters')
+            raise ValueError("Password must be at least 6 characters")
         return v
+
 
 # In-memory user storage (in production, use a real database)
 users_db: Dict[str, Dict[str, Any]] = {}
 user_id_counter = 1
 
+
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt."""
     salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against its hash."""
     try:
-        return bcrypt.checkpw(
-            plain_password.encode('utf-8'),
-            hashed_password.encode('utf-8')
-        )
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
     except Exception:
         return False
+
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT access token."""
@@ -119,6 +129,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+
 def decode_access_token(token: str) -> Dict[str, Any]:
     """Decode and validate a JWT token."""
     try:
@@ -128,6 +139,7 @@ def decode_access_token(token: str) -> Dict[str, Any]:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
 
 def create_user(user_data: UserCreate) -> UserResponse:
     """Create a new user."""
@@ -144,41 +156,40 @@ def create_user(user_data: UserCreate) -> UserResponse:
     hashed_pwd = hash_password(user_data.password)
 
     user = {
-        'id': user_id,
-        'email': user_data.email,
-        'username': user_data.username,
-        'password_hash': hashed_pwd,
-        'role': user_data.role,
-        'created_at': datetime.utcnow(),
-        'updated_at': datetime.utcnow()
+        "id": user_id,
+        "email": user_data.email,
+        "username": user_data.username,
+        "password_hash": hashed_pwd,
+        "role": user_data.role,
+        "created_at": datetime.utcnow(),
+        "updated_at": datetime.utcnow(),
     }
 
     users_db[user_data.email] = user
 
     return UserResponse(
-        id=user['id'],
-        email=user['email'],
-        username=user['username'],
-        role=user['role'],
-        created_at=user['created_at']
+        id=user["id"], email=user["email"], username=user["username"], role=user["role"], created_at=user["created_at"]
     )
+
 
 def get_user_by_email(email: str) -> Optional[Dict[str, Any]]:
     """Get user by email."""
     return users_db.get(email)
 
+
 def get_all_users() -> List[UserResponse]:
     """Get all users (admin only)."""
     return [
         UserResponse(
-            id=user['id'],
-            email=user['email'],
-            username=user['username'],
-            role=user['role'],
-            created_at=user['created_at']
+            id=user["id"],
+            email=user["email"],
+            username=user["username"],
+            role=user["role"],
+            created_at=user["created_at"],
         )
         for user in users_db.values()
     ]
+
 
 def update_user(email: str, update_data: UserUpdate) -> UserResponse:
     """Update user information."""
@@ -187,23 +198,20 @@ def update_user(email: str, update_data: UserUpdate) -> UserResponse:
         raise HTTPException(status_code=404, detail="User not found")
 
     if update_data.username:
-        user['username'] = update_data.username
+        user["username"] = update_data.username
 
     if update_data.password:
-        user['password_hash'] = hash_password(update_data.password)
+        user["password_hash"] = hash_password(update_data.password)
 
     if update_data.role and update_data.role in UserRole.all_roles():
-        user['role'] = update_data.role
+        user["role"] = update_data.role
 
-    user['updated_at'] = datetime.utcnow()
+    user["updated_at"] = datetime.utcnow()
 
     return UserResponse(
-        id=user['id'],
-        email=user['email'],
-        username=user['username'],
-        role=user['role'],
-        created_at=user['created_at']
+        id=user["id"], email=user["email"], username=user["username"], role=user["role"], created_at=user["created_at"]
     )
+
 
 def delete_user(email: str) -> bool:
     """Delete a user."""
@@ -212,34 +220,35 @@ def delete_user(email: str) -> bool:
         return True
     return False
 
+
 def authenticate_user(email: str, password: str) -> Optional[Dict[str, Any]]:
     """Authenticate a user by email and password."""
     user = users_db.get(email)
     if not user:
         return None
 
-    if not verify_password(password, user['password_hash']):
+    if not verify_password(password, user["password_hash"]):
         return None
 
     return user
+
 
 def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[str, Any]:
     """Get current user from JWT token in Authorization header."""
     if not authorization:
         raise HTTPException(
-            status_code=401,
-            detail="Not authenticated. Please provide Authorization header with Bearer token."
+            status_code=401, detail="Not authenticated. Please provide Authorization header with Bearer token."
         )
 
     try:
         scheme, token = authorization.split()
-        if scheme.lower() != 'bearer':
+        if scheme.lower() != "bearer":
             raise HTTPException(status_code=401, detail="Invalid authentication scheme. Use 'Bearer <token>'")
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid Authorization header format")
 
     payload = decode_access_token(token)
-    email = payload.get('sub')
+    email = payload.get("sub")
 
     if not email:
         raise HTTPException(status_code=401, detail="Invalid token payload")
@@ -250,11 +259,13 @@ def get_current_user(authorization: Optional[str] = Header(None)) -> Dict[str, A
 
     return user
 
+
 def has_permission(user: Dict[str, Any], permission: str) -> bool:
     """Check if a user has a specific permission."""
-    role = user.get('role')
+    role = user.get("role")
     permissions = ROLE_PERMISSIONS.get(role, [])
     return permission in permissions
+
 
 # Initialize default users for testing
 def initialize_default_users():
@@ -262,8 +273,8 @@ def initialize_default_users():
     global user_id_counter
 
     # Only create default users in development mode
-    environment = os.getenv('ENVIRONMENT', 'development').lower()
-    if environment == 'production':
+    environment = os.getenv("ENVIRONMENT", "development").lower()
+    if environment == "production":
         print("\n🔐 Production mode: No default users created. Use /auth/register to create users.\n")
         return
 
@@ -278,66 +289,92 @@ def initialize_default_users():
         # Create admin user
         try:
             admin_user = UserCreate(
-                email="admin@example.com",
-                password=admin_pass,
-                username="Administrator",
-                role=UserRole.ADMIN
+                email="admin@example.com", password=admin_pass, username="Administrator", role=UserRole.ADMIN
             )
             create_user(admin_user)
-            print(f"  ✓ Admin: admin@example.com / admin123")
+            print("  ✓ Admin: admin@example.com / admin123")
         except Exception as e:
             print(f"  ✗ Failed to create admin user: {e}")
 
         # Create regular user
         try:
             regular_user = UserCreate(
-                email="user@example.com",
-                password=user_pass,
-                username="Regular User",
-                role=UserRole.USER
+                email="user@example.com", password=user_pass, username="Regular User", role=UserRole.USER
             )
             create_user(regular_user)
-            print(f"  ✓ User: user@example.com / user123")
+            print("  ✓ User: user@example.com / user123")
         except Exception as e:
             print(f"  ✗ Failed to create regular user: {e}")
 
         # Create viewer user
         try:
             viewer_user = UserCreate(
-                email="viewer@example.com",
-                password=viewer_pass,
-                username="Viewer User",
-                role=UserRole.VIEWER
+                email="viewer@example.com", password=viewer_pass, username="Viewer User", role=UserRole.VIEWER
             )
             create_user(viewer_user)
-            print(f"  ✓ Viewer: viewer@example.com / viewer123")
+            print("  ✓ Viewer: viewer@example.com / viewer123")
         except Exception as e:
             print(f"  ✗ Failed to create viewer user: {e}")
 
         # Additional demo users for screenshots
         demo_users = [
             # Admins
-            {"email": "john.smith@company.com", "username": "John Smith", "role": UserRole.ADMIN, "password": "demo123"},
-            {"email": "sarah.johnson@company.com", "username": "Sarah Johnson", "role": UserRole.ADMIN, "password": "demo123"},
+            {
+                "email": "john.smith@company.com",
+                "username": "John Smith",
+                "role": UserRole.ADMIN,
+                "password": "demo123",
+            },
+            {
+                "email": "sarah.johnson@company.com",
+                "username": "Sarah Johnson",
+                "role": UserRole.ADMIN,
+                "password": "demo123",
+            },
             # Users (Developers/Engineers)
-            {"email": "michael.chen@company.com", "username": "Michael Chen", "role": UserRole.USER, "password": "demo123"},
-            {"email": "emily.davis@company.com", "username": "Emily Davis", "role": UserRole.USER, "password": "demo123"},
-            {"email": "david.wilson@company.com", "username": "David Wilson", "role": UserRole.USER, "password": "demo123"},
-            {"email": "alex.martinez@company.com", "username": "Alex Martinez", "role": UserRole.USER, "password": "demo123"},
+            {
+                "email": "michael.chen@company.com",
+                "username": "Michael Chen",
+                "role": UserRole.USER,
+                "password": "demo123",
+            },
+            {
+                "email": "emily.davis@company.com",
+                "username": "Emily Davis",
+                "role": UserRole.USER,
+                "password": "demo123",
+            },
+            {
+                "email": "david.wilson@company.com",
+                "username": "David Wilson",
+                "role": UserRole.USER,
+                "password": "demo123",
+            },
+            {
+                "email": "alex.martinez@company.com",
+                "username": "Alex Martinez",
+                "role": UserRole.USER,
+                "password": "demo123",
+            },
             # Viewers (Read-only)
-            {"email": "jessica.brown@company.com", "username": "Jessica Brown", "role": UserRole.VIEWER, "password": "demo123"},
-            {"email": "robert.taylor@company.com", "username": "Robert Taylor", "role": UserRole.VIEWER, "password": "demo123"},
+            {
+                "email": "jessica.brown@company.com",
+                "username": "Jessica Brown",
+                "role": UserRole.VIEWER,
+                "password": "demo123",
+            },
+            {
+                "email": "robert.taylor@company.com",
+                "username": "Robert Taylor",
+                "role": UserRole.VIEWER,
+                "password": "demo123",
+            },
         ]
 
         print("\n  📋 Creating demo users...")
         for u in demo_users:
             try:
-                demo_user = UserCreate(
-                    email=u["email"],
-                    password=u["password"],
-                    username=u["username"],
-                    role=u["role"]
-                )
+                demo_user = UserCreate(email=u["email"], password=u["password"], username=u["username"], role=u["role"])
                 create_user(demo_user)
                 print(f"    ✓ {u['role']}: {u['username']} ({u['email']})")
             except Exception as e:

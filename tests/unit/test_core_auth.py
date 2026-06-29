@@ -1,17 +1,27 @@
 """
 Unit tests for core/auth.py module
 """
-import pytest
-from unittest.mock import patch, MagicMock
 from datetime import datetime, timedelta
+
 import jwt
-import os
+import pytest
 
 from backend.core.auth import (
-    UserRole, UserCreate, UserLogin, UserUpdate, UserResponse,
-    create_user, authenticate_user, get_current_user, create_access_token,
-    get_all_users, update_user, delete_user, has_permission,
-    ROLE_PERMISSIONS, SECRET_KEY, ALGORITHM
+    ALGORITHM,
+    ROLE_PERMISSIONS,
+    SECRET_KEY,
+    UserCreate,
+    UserLogin,
+    UserRole,
+    UserUpdate,
+    authenticate_user,
+    create_access_token,
+    create_user,
+    delete_user,
+    get_all_users,
+    get_current_user,
+    has_permission,
+    update_user,
 )
 
 
@@ -20,16 +30,16 @@ class TestUserRole:
 
     def test_role_values(self):
         """Test role constant values."""
-        assert UserRole.ADMIN == 'admin'
-        assert UserRole.USER == 'user'
-        assert UserRole.VIEWER == 'viewer'
+        assert UserRole.ADMIN == "admin"
+        assert UserRole.USER == "user"
+        assert UserRole.VIEWER == "viewer"
 
     def test_all_roles(self):
         """Test all_roles method."""
         roles = UserRole.all_roles()
-        assert 'admin' in roles
-        assert 'user' in roles
-        assert 'viewer' in roles
+        assert "admin" in roles
+        assert "user" in roles
+        assert "viewer" in roles
         assert len(roles) == 3
 
 
@@ -38,49 +48,30 @@ class TestUserModels:
 
     def test_user_create_valid(self):
         """Test creating valid UserCreate."""
-        user = UserCreate(
-            email="test@example.com",
-            password="password123",
-            username="testuser"
-        )
+        user = UserCreate(email="test@example.com", password="password123", username="testuser")
         assert user.email == "test@example.com"
         assert user.role == UserRole.USER  # default
 
     def test_user_create_with_role(self):
         """Test creating UserCreate with role."""
-        user = UserCreate(
-            email="admin@example.com",
-            password="adminpass",
-            username="admin",
-            role=UserRole.ADMIN
-        )
+        user = UserCreate(email="admin@example.com", password="adminpass", username="admin", role=UserRole.ADMIN)
         assert user.role == UserRole.ADMIN
 
     def test_user_create_invalid_role(self):
         """Test UserCreate with invalid role."""
         with pytest.raises(ValueError):
             UserCreate(
-                email="test@example.com",
-                password="password123",
-                username="testuser",
-                role="superuser"  # Invalid
+                email="test@example.com", password="password123", username="testuser", role="superuser"  # Invalid
             )
 
     def test_user_create_short_password(self):
         """Test UserCreate with short password."""
         with pytest.raises(ValueError):
-            UserCreate(
-                email="test@example.com",
-                password="123",  # Too short
-                username="testuser"
-            )
+            UserCreate(email="test@example.com", password="123", username="testuser")  # Too short
 
     def test_user_login_valid(self):
         """Test creating valid UserLogin."""
-        login = UserLogin(
-            email="test@example.com",
-            password="password123"
-        )
+        login = UserLogin(email="test@example.com", password="password123")
         assert login.email == "test@example.com"
 
     def test_user_update_partial(self):
@@ -123,14 +114,11 @@ class TestUserCRUD:
         """Test creating a new user."""
         # Clear users_db for test isolation
         from backend.core import auth
+
         auth.users_db.clear()
         auth.user_id_counter = 0
 
-        user_data = UserCreate(
-            email="newuser@example.com",
-            password="password123",
-            username="newuser"
-        )
+        user_data = UserCreate(email="newuser@example.com", password="password123", username="newuser")
         user = create_user(user_data)
 
         assert user.email == "newuser@example.com"
@@ -140,23 +128,17 @@ class TestUserCRUD:
     def test_create_duplicate_user(self):
         """Test creating user with duplicate email."""
         from fastapi import HTTPException
+
         from backend.core import auth
+
         auth.users_db.clear()
         auth.user_id_counter = 0
 
-        user_data = UserCreate(
-            email="duplicate@example.com",
-            password="password123",
-            username="user1"
-        )
+        user_data = UserCreate(email="duplicate@example.com", password="password123", username="user1")
         create_user(user_data)
 
         # Try to create again with same email
-        user_data2 = UserCreate(
-            email="duplicate@example.com",
-            password="password456",
-            username="user2"
-        )
+        user_data2 = UserCreate(email="duplicate@example.com", password="password456", username="user2")
         with pytest.raises(HTTPException) as exc_info:
             create_user(user_data2)
 
@@ -165,31 +147,25 @@ class TestUserCRUD:
     def test_authenticate_user_success(self):
         """Test successful authentication."""
         from backend.core import auth
+
         auth.users_db.clear()
         auth.user_id_counter = 0
 
-        user_data = UserCreate(
-            email="auth@example.com",
-            password="mypassword",
-            username="authuser"
-        )
+        user_data = UserCreate(email="auth@example.com", password="mypassword", username="authuser")
         create_user(user_data)
 
         result = authenticate_user("auth@example.com", "mypassword")
         assert result is not None
-        assert result['email'] == "auth@example.com"
+        assert result["email"] == "auth@example.com"
 
     def test_authenticate_user_wrong_password(self):
         """Test authentication with wrong password."""
         from backend.core import auth
+
         auth.users_db.clear()
         auth.user_id_counter = 0
 
-        user_data = UserCreate(
-            email="auth2@example.com",
-            password="correctpassword",
-            username="authuser2"
-        )
+        user_data = UserCreate(email="auth2@example.com", password="correctpassword", username="authuser2")
         create_user(user_data)
 
         result = authenticate_user("auth2@example.com", "wrongpassword")
@@ -203,16 +179,13 @@ class TestUserCRUD:
     def test_get_all_users(self):
         """Test getting all users."""
         from backend.core import auth
+
         auth.users_db.clear()
         auth.user_id_counter = 0
 
         # Create some users
         for i in range(3):
-            user_data = UserCreate(
-                email=f"user{i}@example.com",
-                password="password123",
-                username=f"user{i}"
-            )
+            user_data = UserCreate(email=f"user{i}@example.com", password="password123", username=f"user{i}")
             create_user(user_data)
 
         users = get_all_users()
@@ -221,14 +194,11 @@ class TestUserCRUD:
     def test_update_user(self):
         """Test updating a user."""
         from backend.core import auth
+
         auth.users_db.clear()
         auth.user_id_counter = 0
 
-        user_data = UserCreate(
-            email="update@example.com",
-            password="password123",
-            username="oldname"
-        )
+        user_data = UserCreate(email="update@example.com", password="password123", username="oldname")
         create_user(user_data)
 
         update_data = UserUpdate(username="newname")
@@ -249,14 +219,11 @@ class TestUserCRUD:
     def test_delete_user(self):
         """Test deleting a user."""
         from backend.core import auth
+
         auth.users_db.clear()
         auth.user_id_counter = 0
 
-        user_data = UserCreate(
-            email="delete@example.com",
-            password="password123",
-            username="deleteuser"
-        )
+        user_data = UserCreate(email="delete@example.com", password="password123", username="deleteuser")
         create_user(user_data)
 
         result = delete_user("delete@example.com")
@@ -278,23 +245,23 @@ class TestPermissions:
 
     def test_admin_has_manage_users(self):
         """Test admin has manage_users permission."""
-        admin_user = {'role': UserRole.ADMIN}
-        assert has_permission(admin_user, 'manage_users') is True
+        admin_user = {"role": UserRole.ADMIN}
+        assert has_permission(admin_user, "manage_users") is True
 
     def test_user_no_manage_users(self):
         """Test regular user doesn't have manage_users."""
-        regular_user = {'role': UserRole.USER}
-        assert has_permission(regular_user, 'manage_users') is False
+        regular_user = {"role": UserRole.USER}
+        assert has_permission(regular_user, "manage_users") is False
 
     def test_viewer_has_read(self):
         """Test viewer has read permission."""
-        viewer = {'role': UserRole.VIEWER}
-        assert has_permission(viewer, 'read') is True
+        viewer = {"role": UserRole.VIEWER}
+        assert has_permission(viewer, "read") is True
 
     def test_viewer_no_write(self):
         """Test viewer doesn't have write permission."""
-        viewer = {'role': UserRole.VIEWER}
-        assert has_permission(viewer, 'write') is False
+        viewer = {"role": UserRole.VIEWER}
+        assert has_permission(viewer, "write") is False
 
     def test_role_permissions_structure(self):
         """Test ROLE_PERMISSIONS has correct structure."""
@@ -302,9 +269,9 @@ class TestPermissions:
         assert UserRole.USER in ROLE_PERMISSIONS
         assert UserRole.VIEWER in ROLE_PERMISSIONS
 
-        assert 'manage_users' in ROLE_PERMISSIONS[UserRole.ADMIN]
-        assert 'read' in ROLE_PERMISSIONS[UserRole.USER]
-        assert 'write' in ROLE_PERMISSIONS[UserRole.USER]
+        assert "manage_users" in ROLE_PERMISSIONS[UserRole.ADMIN]
+        assert "read" in ROLE_PERMISSIONS[UserRole.USER]
+        assert "write" in ROLE_PERMISSIONS[UserRole.USER]
 
 
 class TestGetCurrentUser:
@@ -313,15 +280,12 @@ class TestGetCurrentUser:
     def test_get_current_user_valid_token(self):
         """Test getting current user with valid token."""
         from backend.core import auth
+
         auth.users_db.clear()
         auth.user_id_counter = 0
 
         # Create user
-        user_data = UserCreate(
-            email="current@example.com",
-            password="password123",
-            username="currentuser"
-        )
+        user_data = UserCreate(email="current@example.com", password="password123", username="currentuser")
         create_user(user_data)
 
         # Create token
@@ -329,7 +293,7 @@ class TestGetCurrentUser:
 
         # Get current user
         user = get_current_user(authorization=f"Bearer {token}")
-        assert user['email'] == "current@example.com"
+        assert user["email"] == "current@example.com"
 
     def test_get_current_user_invalid_token(self):
         """Test getting current user with invalid token."""
@@ -355,9 +319,7 @@ class TestGetCurrentUser:
 
         # Create expired token
         expired_token = jwt.encode(
-            {"sub": "test@example.com", "exp": datetime.utcnow() - timedelta(hours=1)},
-            SECRET_KEY,
-            algorithm=ALGORITHM
+            {"sub": "test@example.com", "exp": datetime.utcnow() - timedelta(hours=1)}, SECRET_KEY, algorithm=ALGORITHM
         )
 
         with pytest.raises(HTTPException) as exc_info:

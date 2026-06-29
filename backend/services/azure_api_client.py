@@ -6,10 +6,9 @@ Client for interacting with various Azure REST APIs:
 - Azure Management API (requires authentication)
 """
 
-import os
 import logging
-from typing import Dict, List, Any, Optional
-from datetime import datetime
+import os
+from typing import Any, Dict, List, Optional
 
 from backend.services.base_api_client import BaseCloudAPIClient
 
@@ -18,6 +17,7 @@ logger = logging.getLogger(__name__)
 # Try to import Azure Identity for authentication
 try:
     from azure.identity import ClientSecretCredential, DefaultAzureCredential
+
     AZURE_IDENTITY_AVAILABLE = True
 except ImportError:
     AZURE_IDENTITY_AVAILABLE = False
@@ -58,9 +58,7 @@ class AzureAPIClient(BaseCloudAPIClient):
             if tenant_id and client_id and client_secret:
                 logger.info("Initializing Azure authentication with Service Principal")
                 self._credentials = ClientSecretCredential(
-                    tenant_id=tenant_id,
-                    client_id=client_id,
-                    client_secret=client_secret
+                    tenant_id=tenant_id, client_id=client_id, client_secret=client_secret
                 )
             else:
                 logger.info("Initializing Azure authentication with DefaultAzureCredential")
@@ -88,10 +86,7 @@ class AzureAPIClient(BaseCloudAPIClient):
     # ==================== Azure Retail Prices API (Public) ====================
 
     async def get_vm_pricing(
-        self,
-        vm_size: str,
-        region: str,
-        operating_system: str = "Linux"
+        self, vm_size: str, region: str, operating_system: str = "Linux"
     ) -> Optional[Dict[str, Any]]:
         """
         Get real-time pricing for Azure VM from Retail Prices API.
@@ -112,9 +107,7 @@ class AzureAPIClient(BaseCloudAPIClient):
             filter_query += " and productName contains 'Linux'"
 
         data = await self._get(
-            AZURE_RETAIL_PRICES_API,
-            params={"$filter": filter_query, "currencyCode": "USD"},
-            require_auth=False
+            AZURE_RETAIL_PRICES_API, params={"$filter": filter_query, "currencyCode": "USD"}, require_auth=False
         )
 
         if not data:
@@ -137,14 +130,11 @@ class AzureAPIClient(BaseCloudAPIClient):
             "product_name": pricing.get("productName", ""),
             "sku_name": pricing.get("skuName", ""),
             "meter_name": pricing.get("meterName", ""),
-            "last_updated": self._format_timestamp()
+            "last_updated": self._format_timestamp(),
         }
 
     async def get_storage_pricing(
-        self,
-        storage_type: str,
-        region: str,
-        redundancy: str = "LRS"
+        self, storage_type: str, region: str, redundancy: str = "LRS"
     ) -> Optional[Dict[str, Any]]:
         """Get real-time pricing for Azure Storage."""
         regions_to_try = [region, "westeurope", "eastus"]
@@ -158,25 +148,18 @@ class AzureAPIClient(BaseCloudAPIClient):
 
         return None
 
-    async def _fetch_storage_pricing(
-        self,
-        storage_type: str,
-        region: str,
-        redundancy: str
-    ) -> Optional[Dict[str, Any]]:
+    async def _fetch_storage_pricing(self, storage_type: str, region: str, redundancy: str) -> Optional[Dict[str, Any]]:
         """Internal method to fetch storage pricing."""
-        self._log_api_call("Fetching Azure Storage pricing", storage_type=storage_type, region=region, redundancy=redundancy)
+        self._log_api_call(
+            "Fetching Azure Storage pricing", storage_type=storage_type, region=region, redundancy=redundancy
+        )
 
         filter_query = (
-            f"serviceName eq 'Storage' "
-            f"and armRegionName eq '{region}' "
-            f"and priceType eq 'Consumption'"
+            f"serviceName eq 'Storage' " f"and armRegionName eq '{region}' " f"and priceType eq 'Consumption'"
         )
 
         data = await self._get(
-            AZURE_RETAIL_PRICES_API,
-            params={"$filter": filter_query, "currencyCode": "USD"},
-            require_auth=False
+            AZURE_RETAIL_PRICES_API, params={"$filter": filter_query, "currencyCode": "USD"}, require_auth=False
         )
 
         if not data:
@@ -189,7 +172,8 @@ class AzureAPIClient(BaseCloudAPIClient):
         # Filter based on storage type and redundancy
         if storage_type.lower() == "premium":
             matching_items = [
-                item for item in items
+                item
+                for item in items
                 if "Premium" in item.get("skuName", "")
                 and redundancy in item.get("skuName", "")
                 and "Data Stored" in item.get("meterName", "")
@@ -197,7 +181,8 @@ class AzureAPIClient(BaseCloudAPIClient):
         else:
             sku_prefix = f"Hot {redundancy}"
             matching_items = [
-                item for item in items
+                item
+                for item in items
                 if "Block Blob" in item.get("productName", "")
                 and "Data Stored" in item.get("meterName", "")
                 and item.get("skuName", "").startswith(sku_prefix)
@@ -205,9 +190,9 @@ class AzureAPIClient(BaseCloudAPIClient):
 
         if not matching_items:
             matching_items = [
-                item for item in items
-                if "Data Stored" in item.get("meterName", "")
-                and redundancy in item.get("skuName", "")
+                item
+                for item in items
+                if "Data Stored" in item.get("meterName", "") and redundancy in item.get("skuName", "")
             ]
 
         if not matching_items:
@@ -224,14 +209,11 @@ class AzureAPIClient(BaseCloudAPIClient):
             "product_name": pricing.get("productName", ""),
             "sku_name": pricing.get("skuName", ""),
             "meter_name": pricing.get("meterName", ""),
-            "last_updated": self._format_timestamp()
+            "last_updated": self._format_timestamp(),
         }
 
     async def get_disk_pricing(
-        self,
-        disk_type: str,
-        region: str,
-        size_gb: Optional[int] = None
+        self, disk_type: str, region: str, size_gb: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
         """Get real-time pricing for Azure Managed Disks."""
         self._log_api_call("Fetching Azure Disk pricing", disk_type=disk_type, region=region)
@@ -240,21 +222,17 @@ class AzureAPIClient(BaseCloudAPIClient):
             "Standard_LRS": "Standard HDD Managed Disks",
             "StandardSSD_LRS": "Standard SSD Managed Disks",
             "Premium_LRS": "Premium SSD Managed Disks",
-            "PremiumV2_LRS": "Premium SSD v2 Managed Disks"
+            "PremiumV2_LRS": "Premium SSD v2 Managed Disks",
         }
 
         service_name = disk_service_map.get(disk_type, "Standard SSD Managed Disks")
 
         filter_query = (
-            f"serviceName eq '{service_name}' "
-            f"and armRegionName eq '{region}' "
-            f"and priceType eq 'Consumption'"
+            f"serviceName eq '{service_name}' " f"and armRegionName eq '{region}' " f"and priceType eq 'Consumption'"
         )
 
         data = await self._get(
-            AZURE_RETAIL_PRICES_API,
-            params={"$filter": filter_query, "currencyCode": "USD"},
-            require_auth=False
+            AZURE_RETAIL_PRICES_API, params={"$filter": filter_query, "currencyCode": "USD"}, require_auth=False
         )
 
         if not data:
@@ -280,7 +258,7 @@ class AzureAPIClient(BaseCloudAPIClient):
             "product_name": pricing.get("productName", ""),
             "sku_name": pricing.get("skuName", ""),
             "meter_name": pricing.get("meterName", ""),
-            "last_updated": self._format_timestamp()
+            "last_updated": self._format_timestamp(),
         }
 
     # ==================== Azure Management API (Authenticated) ====================
@@ -309,7 +287,7 @@ class AzureAPIClient(BaseCloudAPIClient):
                 "memory_in_mb": vm.get("memoryInMB"),
                 "max_data_disk_count": vm.get("maxDataDiskCount"),
                 "os_disk_size_in_mb": vm.get("osDiskSizeInMB"),
-                "resource_disk_size_in_mb": vm.get("resourceDiskSizeInMB")
+                "resource_disk_size_in_mb": vm.get("resourceDiskSizeInMB"),
             }
             for vm in data.get("value", [])
         ]
@@ -332,7 +310,7 @@ class AzureAPIClient(BaseCloudAPIClient):
             {
                 "name": loc.get("name"),
                 "display_name": loc.get("displayName"),
-                "regional_display_name": loc.get("regionalDisplayName")
+                "regional_display_name": loc.get("regionalDisplayName"),
             }
             for loc in data.get("value", [])
         ]
