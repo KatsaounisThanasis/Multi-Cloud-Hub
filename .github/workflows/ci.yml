@@ -111,10 +111,10 @@ jobs:
     - name: Run Flake8 Linter
       run: flake8 backend/ tests/
 
-    # Advisory for now: mypy reports type issues but does not fail the build yet.
-    - name: Run mypy (advisory)
-      run: mypy backend/ || true
-      continue-on-error: true
+    # Enforced on all type-clean modules; known typing debt is listed under
+    # [[tool.mypy.overrides]] in pyproject.toml and paid down incrementally.
+    - name: Run mypy
+      run: mypy backend/
 
   # =============================================================================
   # Frontend Build & Lint
