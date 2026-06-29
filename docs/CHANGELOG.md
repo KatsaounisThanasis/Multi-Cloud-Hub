@@ -13,11 +13,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SECURITY.md with vulnerability reporting guidelines
 - CONTRIBUTING.md with development guidelines
 - Prometheus metrics endpoint preparation
+- Unit tests for the deployment Celery tasks, Terraform state backend manager,
+  and the Azure/GCP pricing + management API clients (+71 tests; backend unit
+  coverage raised from ~57% to 67%)
+- Tooling config: `pyproject.toml` (black/isort/mypy) and `.flake8`
 
 ### Changed
 - Removed all console.log statements from frontend for security
 - Enhanced security headers middleware
 - Improved error handling without exposing internals
+- CI quality gates are now blocking instead of advisory: black, isort and
+  flake8 fail the build on violations, and mypy is enforced on all type-clean
+  modules (existing typing debt tracked via `[[tool.mypy.overrides]]`)
+- Raised the CI coverage gate from 50% to 66%
+
+### Fixed
+- `StateBackendManager._get_bucket_name_from_env` crashed with a `TypeError`
+  (`os.getenv(None)`) on the local/unknown-platform path
+- Removed unused imports, bare `except` clauses, and placeholder-less f-strings
+  flagged by flake8
 
 ### Security
 - Fixed hardcoded default passwords - now generates random passwords in development

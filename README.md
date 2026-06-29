@@ -381,7 +381,7 @@ pytest
 pytest --cov=backend --cov-report=html
 
 # Specific test file
-pytest tests/unit/test_auth.py -v
+pytest tests/unit/test_core_auth.py -v
 ```
 
 ### Docker Development
