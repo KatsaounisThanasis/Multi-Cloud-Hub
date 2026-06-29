@@ -1,0 +1,13 @@
+[flake8]
+max-line-length = 120
+# E203/W503 conflict with black; E501 handled by black's line-length.
+extend-ignore = E203, W503, E501
+exclude =
+    venv,
+    .venv,
+    build,
+    dist,
+    frontend-v3,
+    terraform,
+    .git,
+    __pycache__

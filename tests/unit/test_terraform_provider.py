@@ -1,12 +1,13 @@
 """
 Unit tests for Terraform Provider
 """
-import pytest
 import os
-import json
-from unittest.mock import Mock, patch, MagicMock, mock_open
+from unittest.mock import Mock, mock_open, patch
+
+import pytest
+
+from backend.providers.base import DeploymentResult, DeploymentStatus, ProviderType, ResourceGroup
 from backend.providers.terraform_provider import TerraformProvider
-from backend.providers.base import DeploymentResult, DeploymentStatus, ResourceGroup, CloudResource, ProviderType
 
 # Mark all tests in this module as requiring Terraform
 pytestmark = pytest.mark.terraform
@@ -15,10 +16,9 @@ pytestmark = pytest.mark.terraform
 @pytest.fixture
 def terraform_gcp_provider():
     """Create TerraformProvider instance for GCP"""
-    with patch.dict(os.environ, {
-        'GOOGLE_PROJECT_ID': 'test-project',
-        'GOOGLE_APPLICATION_CREDENTIALS': '/path/to/creds.json'
-    }):
+    with patch.dict(
+        os.environ, {"GOOGLE_PROJECT_ID": "test-project", "GOOGLE_APPLICATION_CREDENTIALS": "/path/to/creds.json"}
+    ):
         provider = TerraformProvider(cloud_platform="gcp", subscription_id="test-project")
         yield provider
 
@@ -26,12 +26,15 @@ def terraform_gcp_provider():
 @pytest.fixture
 def terraform_azure_provider():
     """Create TerraformProvider instance for Azure"""
-    with patch.dict(os.environ, {
-        'AZURE_SUBSCRIPTION_ID': 'test-sub',
-        'AZURE_TENANT_ID': 'test-tenant',
-        'AZURE_CLIENT_ID': 'test-client',
-        'AZURE_CLIENT_SECRET': 'test-secret'
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "AZURE_SUBSCRIPTION_ID": "test-sub",
+            "AZURE_TENANT_ID": "test-tenant",
+            "AZURE_CLIENT_ID": "test-client",
+            "AZURE_CLIENT_SECRET": "test-secret",
+        },
+    ):
         provider = TerraformProvider(cloud_platform="azure", subscription_id="test-sub")
         yield provider
 
@@ -64,7 +67,7 @@ class TestTerraformProvider:
         assert "provider" in config
         assert "azurerm" in config
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_terraform_init_success(self, mock_run, terraform_azure_provider):
         """Test successful Terraform initialization"""
         mock_run.return_value = Mock(returncode=0, stdout="Terraform initialized", stderr="")
@@ -76,14 +79,10 @@ class TestTerraformProvider:
         assert "terraform" in call_args
         assert "init" in call_args
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_terraform_command_failure(self, mock_run, terraform_azure_provider):
         """Test Terraform command failure"""
-        mock_run.return_value = Mock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Invalid configuration"
-        )
+        mock_run.return_value = Mock(returncode=1, stdout="", stderr="Error: Invalid configuration")
 
         output, returncode = terraform_azure_provider._run_terraform_command(["apply"])
 
@@ -91,24 +90,20 @@ class TestTerraformProvider:
         assert "Error: Invalid configuration" in output
 
     @pytest.mark.asyncio
-    @patch('subprocess.run')
-    @patch('builtins.open', new_callable=mock_open, read_data='resource "azurerm_resource_group" "example" {}')
+    @patch("subprocess.run")
+    @patch("builtins.open", new_callable=mock_open, read_data='resource "azurerm_resource_group" "example" {}')
     async def test_deploy_success(self, mock_file, mock_run, terraform_azure_provider):
         """Test successful deployment"""
         # The provider makes multiple subprocess calls:
         # 1. init, 2. plan, 3. apply, 4. output
         # Use return_value for consistent behavior instead of side_effect
-        mock_run.return_value = Mock(
-            returncode=0,
-            stdout='{"resource_group_name": {"value": "test-rg"}}',
-            stderr=""
-        )
+        mock_run.return_value = Mock(returncode=0, stdout='{"resource_group_name": {"value": "test-rg"}}', stderr="")
 
         result = await terraform_azure_provider.deploy(
             template_path="/path/to/template.tf",
             parameters={"resource_group_name": "test-rg"},
             resource_group="test-group",
-            location="westeurope"
+            location="westeurope",
         )
 
         assert isinstance(result, DeploymentResult)
@@ -116,23 +111,16 @@ class TestTerraformProvider:
         assert "resource_group_name" in result.outputs
 
     @pytest.mark.asyncio
-    @patch('subprocess.run')
-    @patch('builtins.open', new_callable=mock_open, read_data='resource "azurerm_resource_group" "example" {}')
+    @patch("subprocess.run")
+    @patch("builtins.open", new_callable=mock_open, read_data='resource "azurerm_resource_group" "example" {}')
     async def test_deploy_failure(self, mock_file, mock_run, terraform_azure_provider):
         """Test deployment failure"""
         # First two calls succeed (init, plan), third fails (apply)
-        mock_run.return_value = Mock(
-            returncode=1,
-            stdout="",
-            stderr="Error: Resource creation failed"
-        )
+        mock_run.return_value = Mock(returncode=1, stdout="", stderr="Error: Resource creation failed")
 
         with pytest.raises(Exception) as excinfo:
             await terraform_azure_provider.deploy(
-                template_path="/path/to/template.tf",
-                parameters={},
-                resource_group="test-group",
-                location="westeurope"
+                template_path="/path/to/template.tf", parameters={}, resource_group="test-group", location="westeurope"
             )
 
         # Check that the error message contains relevant information
@@ -147,17 +135,15 @@ class TestTerraformProvider:
         assert len(result) == 0
 
     @pytest.mark.asyncio
-    @patch('subprocess.run')
-    @patch('os.makedirs')
-    @patch('builtins.open', new_callable=mock_open)
+    @patch("subprocess.run")
+    @patch("os.makedirs")
+    @patch("builtins.open", new_callable=mock_open)
     async def test_create_resource_group_azure(self, mock_file, mock_makedirs, mock_run, terraform_azure_provider):
         """Test creating Azure resource group via Terraform"""
         mock_run.return_value = Mock(returncode=0, stdout="", stderr="")
 
         result = await terraform_azure_provider.create_resource_group(
-            name="test-group",
-            location="westeurope",
-            tags={"env": "test"}
+            name="test-group", location="westeurope", tags={"env": "test"}
         )
 
         assert isinstance(result, ResourceGroup)
@@ -167,10 +153,7 @@ class TestTerraformProvider:
     @pytest.mark.asyncio
     async def test_create_resource_group_gcp_skips(self, terraform_gcp_provider):
         """Test that GCP skips resource group creation (not supported)"""
-        result = await terraform_gcp_provider.create_resource_group(
-            name="test-group",
-            location="us-central1"
-        )
+        result = await terraform_gcp_provider.create_resource_group(name="test-group", location="us-central1")
 
         # GCP doesn't use resource groups, should return success without action
         assert isinstance(result, ResourceGroup)

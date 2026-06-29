@@ -5,18 +5,15 @@ This module provides security headers, CORS configuration,
 rate limiting, CSRF protection, and other security-related utilities for the API.
 """
 
-import os
-import time
-import secrets
-import hashlib
-from typing import Optional, List, Dict, Any
-from collections import defaultdict
-from fastapi import Request, Response, HTTPException, status
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.types import ASGIApp
 import logging
+import os
+import secrets
+import time
+from collections import defaultdict
+from typing import Dict, List, Optional
+
+from fastapi import HTTPException, Request, Response, status
+from starlette.middleware.base import BaseHTTPMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -25,13 +22,15 @@ logger = logging.getLogger(__name__)
 # Rate Limiting
 # =============================================================================
 
+
 class RateLimitExceeded(HTTPException):
     """Exception raised when rate limit is exceeded."""
+
     def __init__(self, retry_after: int = 60):
         super().__init__(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Rate limit exceeded. Try again in {retry_after} seconds.",
-            headers={"Retry-After": str(retry_after)}
+            headers={"Retry-After": str(retry_after)},
         )
 
 
@@ -109,11 +108,11 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
 
     # Rate limit configurations per path prefix
     RATE_LIMITS = {
-        "/auth/login": (10, 60),      # 10 requests per minute - anti brute force
-        "/auth/register": (5, 60),     # 5 requests per minute - anti spam
-        "/deploy": (20, 60),           # 20 requests per minute
-        "/api/deploy": (20, 60),       # 20 requests per minute
-        "default": (100, 60),          # 100 requests per minute
+        "/auth/login": (10, 60),  # 10 requests per minute - anti brute force
+        "/auth/register": (5, 60),  # 5 requests per minute - anti spam
+        "/deploy": (20, 60),  # 20 requests per minute
+        "/api/deploy": (20, 60),  # 20 requests per minute
+        "default": (100, 60),  # 100 requests per minute
     }
 
     # Paths to skip rate limiting
@@ -184,6 +183,7 @@ class RateLimitingMiddleware(BaseHTTPMiddleware):
 # =============================================================================
 # CSRF Protection
 # =============================================================================
+
 
 class CSRFProtection:
     """
@@ -280,10 +280,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
         # Validate CSRF token
         if not CSRFProtection.validate(request):
             logger.warning(f"CSRF validation failed for {method} {path}")
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="CSRF token missing or invalid"
-            )
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="CSRF token missing or invalid")
 
         response = await call_next(request)
         self._set_csrf_cookie(response)
@@ -299,7 +296,7 @@ class CSRFMiddleware(BaseHTTPMiddleware):
             httponly=False,  # JavaScript needs to read this
             secure=os.getenv("ENVIRONMENT", "development") == "production",
             samesite="strict",
-            max_age=3600  # 1 hour
+            max_age=3600,  # 1 hour
         )
 
     def _has_api_auth(self, request: Request) -> bool:
@@ -343,9 +340,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
         # Force HTTPS (only in production)
         if os.getenv("ENVIRONMENT", "development") == "production":
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains; preload"
-            )
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
 
         # Content Security Policy
         response.headers["Content-Security-Policy"] = (
@@ -386,13 +381,10 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         # Get client info
         client_host = request.client.host if request.client else "unknown"
         forwarded_for = request.headers.get("X-Forwarded-For", "")
-        user_agent = request.headers.get("User-Agent", "")
+        request.headers.get("User-Agent", "")
 
         # Log request
-        logger.info(
-            f"Request: {request.method} {request.url.path} "
-            f"from {forwarded_for or client_host}"
-        )
+        logger.info(f"Request: {request.method} {request.url.path} " f"from {forwarded_for or client_host}")
 
         # Process request and measure time
         start_time = time.time()
@@ -400,10 +392,7 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         duration = time.time() - start_time
 
         # Log response
-        logger.info(
-            f"Response: {response.status_code} for {request.method} {request.url.path} "
-            f"({duration:.3f}s)"
-        )
+        logger.info(f"Response: {response.status_code} for {request.method} {request.url.path} " f"({duration:.3f}s)")
 
         # Add custom header with request duration
         response.headers["X-Request-Duration"] = f"{duration:.3f}s"
@@ -446,12 +435,7 @@ def get_cors_config() -> dict:
         "allow_credentials": credentials,
         "allow_methods": methods,
         "allow_headers": headers,
-        "expose_headers": [
-            "X-Request-Duration",
-            "X-RateLimit-Limit",
-            "X-RateLimit-Remaining",
-            "X-RateLimit-Reset"
-        ],
+        "expose_headers": ["X-Request-Duration", "X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
         "max_age": 3600,  # Cache preflight requests for 1 hour
     }
 
@@ -500,16 +484,16 @@ def validate_deployment_parameters(parameters: dict) -> tuple[bool, Optional[str
 
     # Dangerous patterns for general parameters
     dangerous_patterns = [
-        (r'[;&|`]', "shell metacharacters (;, &, |, `)"),  # Shell metacharacters (excluding $ for passwords)
-        (r'\.\./|\.\.\\', "path traversal patterns (../)"),  # Path traversal
-        (r'<script', "script tags"),  # XSS attempts
-        (r'DROP\s+TABLE', "SQL injection patterns"),  # SQL injection attempts
-        (r'eval\s*\(', "code execution patterns"),  # Code execution
+        (r"[;&|`]", "shell metacharacters (;, &, |, `)"),  # Shell metacharacters (excluding $ for passwords)
+        (r"\.\./|\.\.\\", "path traversal patterns (../)"),  # Path traversal
+        (r"<script", "script tags"),  # XSS attempts
+        (r"DROP\s+TABLE", "SQL injection patterns"),  # SQL injection attempts
+        (r"eval\s*\(", "code execution patterns"),  # Code execution
     ]
 
     # Parameters that are allowed to have special characters (like $ for passwords)
     # These are only checked for the most dangerous patterns
-    sensitive_param_patterns = ['password', 'secret', 'key', 'token', 'credential']
+    sensitive_param_patterns = ["password", "secret", "key", "token", "credential"]
 
     # Maximum sizes
     MAX_PARAM_NAME_LENGTH = 100
@@ -542,10 +526,10 @@ def validate_deployment_parameters(parameters: dict) -> tuple[bool, Optional[str
         # Skip shell metacharacter check since passwords need special chars like $ ! @ #
         if is_sensitive_param:
             restricted_patterns = [
-                (r'\.\./|\.\.\\', "path traversal patterns (../)"),
-                (r'<script', "script tags"),
-                (r'DROP\s+TABLE', "SQL injection patterns"),
-                (r'eval\s*\(', "code execution patterns"),
+                (r"\.\./|\.\.\\", "path traversal patterns (../)"),
+                (r"<script", "script tags"),
+                (r"DROP\s+TABLE", "SQL injection patterns"),
+                (r"eval\s*\(", "code execution patterns"),
             ]
             for pattern, description in restricted_patterns:
                 if re.search(pattern, value_str, re.IGNORECASE):
@@ -573,9 +557,17 @@ def mask_sensitive_data(data: dict) -> dict:
 
     # Sensitive keys to mask
     sensitive_keys = [
-        'password', 'secret', 'token', 'api_key', 'private_key',
-        'client_secret', 'access_token', 'refresh_token',
-        'credentials', 'auth', 'authorization'
+        "password",
+        "secret",
+        "token",
+        "api_key",
+        "private_key",
+        "client_secret",
+        "access_token",
+        "refresh_token",
+        "credentials",
+        "auth",
+        "authorization",
     ]
 
     masked = copy.deepcopy(data)

@@ -6,10 +6,9 @@ Client for interacting with various GCP REST APIs:
 - Compute Engine API (for machine types, zones, etc.)
 """
 
-import os
 import logging
-from typing import Dict, List, Any, Optional
-from datetime import datetime
+import os
+from typing import Any, Dict, List, Optional
 
 from backend.services.base_api_client import BaseCloudAPIClient
 
@@ -20,6 +19,7 @@ try:
     from google.auth import default as google_auth_default
     from google.auth.transport.requests import Request
     from google.oauth2 import service_account
+
     GOOGLE_AUTH_AVAILABLE = True
 except ImportError:
     GOOGLE_AUTH_AVAILABLE = False
@@ -57,8 +57,7 @@ class GCPAPIClient(BaseCloudAPIClient):
             if credentials_path and os.path.exists(credentials_path):
                 logger.info("Initializing GCP authentication with service account JSON")
                 self._credentials = service_account.Credentials.from_service_account_file(
-                    credentials_path,
-                    scopes=["https://www.googleapis.com/auth/cloud-platform"]
+                    credentials_path, scopes=["https://www.googleapis.com/auth/cloud-platform"]
                 )
             else:
                 logger.info("Initializing GCP authentication with Application Default Credentials")
@@ -90,11 +89,7 @@ class GCPAPIClient(BaseCloudAPIClient):
 
     # ==================== GCP Pricing (Static Database) ====================
 
-    async def get_compute_pricing(
-        self,
-        machine_type: str,
-        region: str
-    ) -> Optional[Dict[str, Any]]:
+    async def get_compute_pricing(self, machine_type: str, region: str) -> Optional[Dict[str, Any]]:
         """
         Get pricing for GCP Compute Engine instance.
         Uses simplified static pricing database.
@@ -126,9 +121,13 @@ class GCPAPIClient(BaseCloudAPIClient):
 
         # Regional pricing adjustments
         region_multipliers = {
-            "us-central1": 1.0, "us-east1": 1.0, "us-west1": 1.0,
-            "europe-west1": 1.08, "europe-west2": 1.10,
-            "asia-southeast1": 1.12, "asia-northeast1": 1.15,
+            "us-central1": 1.0,
+            "us-east1": 1.0,
+            "us-west1": 1.0,
+            "europe-west1": 1.08,
+            "europe-west2": 1.10,
+            "asia-southeast1": 1.12,
+            "asia-northeast1": 1.15,
         }
 
         multiplier = region_multipliers.get(region, 1.0)
@@ -145,16 +144,12 @@ class GCPAPIClient(BaseCloudAPIClient):
             "notes": [
                 "Sustained use discounts may apply (up to 30% savings)",
                 "Committed use discounts available for 1-3 year terms",
-                "Preemptible VMs available at ~70-80% discount"
+                "Preemptible VMs available at ~70-80% discount",
             ],
-            "last_updated": self._format_timestamp()
+            "last_updated": self._format_timestamp(),
         }
 
-    async def get_storage_pricing(
-        self,
-        storage_class: str,
-        region: str
-    ) -> Optional[Dict[str, Any]]:
+    async def get_storage_pricing(self, storage_class: str, region: str) -> Optional[Dict[str, Any]]:
         """Get pricing for GCP Cloud Storage."""
         storage_pricing = {
             "STANDARD": {"us-central1": 0.020, "us-east1": 0.020, "europe-west1": 0.020, "asia-southeast1": 0.023},
@@ -172,14 +167,10 @@ class GCPAPIClient(BaseCloudAPIClient):
             "price_per_gb_month": price_per_gb,
             "currency": "USD",
             "notes": ["Operations and network egress charges apply separately"],
-            "last_updated": self._format_timestamp()
+            "last_updated": self._format_timestamp(),
         }
 
-    async def get_disk_pricing(
-        self,
-        disk_type: str,
-        region: str
-    ) -> Optional[Dict[str, Any]]:
+    async def get_disk_pricing(self, disk_type: str, region: str) -> Optional[Dict[str, Any]]:
         """Get pricing for GCP Persistent Disks."""
         disk_pricing = {
             "pd-standard": 0.040,
@@ -197,9 +188,9 @@ class GCPAPIClient(BaseCloudAPIClient):
             "currency": "USD",
             "notes": [
                 "Regional persistent disks cost 2x of zonal disks",
-                "Snapshots are billed separately at $0.026 per GB/month"
+                "Snapshots are billed separately at $0.026 per GB/month",
             ],
-            "last_updated": self._format_timestamp()
+            "last_updated": self._format_timestamp(),
         }
 
     # ==================== GCP Compute Engine API (Authenticated) ====================
@@ -223,7 +214,7 @@ class GCPAPIClient(BaseCloudAPIClient):
                 "name": region.get("name"),
                 "display_name": region.get("description", region.get("name")),
                 "status": region.get("status"),
-                "zones": [z.split("/")[-1] for z in region.get("zones", [])]
+                "zones": [z.split("/")[-1] for z in region.get("zones", [])],
             }
             for region in data.get("items", [])
         ]
@@ -253,7 +244,7 @@ class GCPAPIClient(BaseCloudAPIClient):
                 "name": zone.get("name"),
                 "region": zone.get("region", "").split("/")[-1],
                 "status": zone.get("status"),
-                "description": zone.get("description")
+                "description": zone.get("description"),
             }
             for zone in zones
         ]
@@ -278,8 +269,10 @@ class GCPAPIClient(BaseCloudAPIClient):
                 "name": mt.get("name"),
                 "vcpus": mt.get("guestCpus", 0),
                 "memory_gb": round(mt.get("memoryMb", 0) / 1024, 2),
-                "description": mt.get("description", f"{mt.get('guestCpus', 0)} vCPUs, {round(mt.get('memoryMb', 0) / 1024, 1)} GB RAM"),
-                "zone": target_zone
+                "description": mt.get(
+                    "description", f"{mt.get('guestCpus', 0)} vCPUs, {round(mt.get('memoryMb', 0) / 1024, 1)} GB RAM"
+                ),
+                "zone": target_zone,
             }
             for mt in data.get("items", [])
         ]

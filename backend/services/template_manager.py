@@ -5,19 +5,19 @@ Automatically discovers and manages deployment templates across
 different cloud providers and formats (Bicep, Terraform, ARM).
 """
 
-import os
 import json
 import logging
-from typing import List, Dict, Any, Optional
-from pathlib import Path
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class TemplateFormat(Enum):
     """Supported template formats."""
+
     BICEP = "bicep"
     TERRAFORM = "terraform"
     ARM = "arm"
@@ -25,6 +25,7 @@ class TemplateFormat(Enum):
 
 class CloudProvider(Enum):
     """Cloud providers."""
+
     AZURE = "azure"
     GCP = "gcp"
 
@@ -32,6 +33,7 @@ class CloudProvider(Enum):
 @dataclass
 class TemplateMetadata:
     """Template metadata."""
+
     name: str
     display_name: str
     format: TemplateFormat
@@ -45,8 +47,8 @@ class TemplateMetadata:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         result = asdict(self)
-        result['format'] = self.format.value
-        result['cloud_provider'] = self.cloud_provider.value
+        result["format"] = self.format.value
+        result["cloud_provider"] = self.cloud_provider.value
         return result
 
 
@@ -128,7 +130,7 @@ class TemplateManager:
         # Try to extract description from file
         description = None
         try:
-            with open(bicep_file, 'r') as f:
+            with open(bicep_file, "r") as f:
                 first_line = f.readline()
                 if first_line.startswith("//") or first_line.startswith("#"):
                     description = first_line.lstrip("/#").strip()
@@ -145,7 +147,7 @@ class TemplateManager:
             cloud_provider=CloudProvider.AZURE,
             path=str(bicep_file),
             description=description,
-            icon=icon
+            icon=icon,
         )
 
     def _parse_terraform_metadata(self, tf_file: Path, cloud: CloudProvider) -> TemplateMetadata:
@@ -160,14 +162,14 @@ class TemplateManager:
         metadata_file = tf_file.parent / f"{name}.metadata.json"
         if metadata_file.exists():
             try:
-                with open(metadata_file, 'r') as f:
+                with open(metadata_file, "r") as f:
                     metadata_json = json.load(f)
 
                 # Load metadata from JSON
-                display_name = metadata_json.get('displayName', display_name)
-                description = metadata_json.get('description')
-                category = metadata_json.get('category')
-                parameters = metadata_json.get('parameters', [])
+                display_name = metadata_json.get("displayName", display_name)
+                description = metadata_json.get("description")
+                category = metadata_json.get("category")
+                parameters = metadata_json.get("parameters", [])
 
                 logger.debug(f"Loaded metadata from {metadata_file}")
             except Exception as e:
@@ -176,7 +178,7 @@ class TemplateManager:
         # Fallback: Try to extract description from template file
         if not description:
             try:
-                with open(tf_file, 'r') as f:
+                with open(tf_file, "r") as f:
                     first_line = f.readline()
                     if first_line.startswith("#"):
                         description = first_line.lstrip("#").strip()
@@ -195,7 +197,7 @@ class TemplateManager:
             description=description,
             category=category,
             parameters=parameters,
-            icon=icon
+            icon=icon,
         )
 
     def _determine_icon(self, template_name: str) -> str:
@@ -228,11 +230,7 @@ class TemplateManager:
 
         return "file-code"
 
-    def list_templates(
-        self,
-        provider_type: Optional[str] = None,
-        cloud: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def list_templates(self, provider_type: Optional[str] = None, cloud: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         List available templates.
 
@@ -250,10 +248,7 @@ class TemplateManager:
             # Return templates for specific cloud across all formats
             templates = []
             for provider_templates in self._templates_cache.values():
-                templates.extend([
-                    t for t in provider_templates
-                    if t.cloud_provider.value == cloud
-                ])
+                templates.extend([t for t in provider_templates if t.cloud_provider.value == cloud])
         else:
             # Return all templates
             templates = []
@@ -340,7 +335,7 @@ class TemplateManager:
             return None
 
         try:
-            with open(path, 'r') as f:
+            with open(path, "r") as f:
                 return f.read()
         except Exception as e:
             logger.error(f"Error reading template {path}: {e}")
@@ -360,24 +355,24 @@ class TemplateManager:
                     "name": "Azure (Bicep)",
                     "format": "bicep",
                     "cloud": "azure",
-                    "template_count": len(self._templates_cache.get("bicep", []))
+                    "template_count": len(self._templates_cache.get("bicep", [])),
                 },
                 {
                     "id": "terraform-azure",
                     "name": "Azure (Terraform)",
                     "format": "terraform",
                     "cloud": "azure",
-                    "template_count": len(self._templates_cache.get("terraform-azure", []))
+                    "template_count": len(self._templates_cache.get("terraform-azure", [])),
                 },
                 {
                     "id": "terraform-gcp",
                     "name": "GCP (Terraform)",
                     "format": "terraform",
                     "cloud": "gcp",
-                    "template_count": len(self._templates_cache.get("terraform-gcp", []))
+                    "template_count": len(self._templates_cache.get("terraform-gcp", [])),
                 },
             ],
-            "total_templates": sum(len(t) for t in self._templates_cache.values())
+            "total_templates": sum(len(t) for t in self._templates_cache.values()),
         }
 
     def refresh(self):

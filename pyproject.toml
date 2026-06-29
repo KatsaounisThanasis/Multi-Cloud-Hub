@@ -1,0 +1,52 @@
+[tool.black]
+line-length = 120
+target-version = ["py311"]
+extend-exclude = '''
+/(
+  | venv
+  | \.venv
+  | build
+  | dist
+  | frontend-v3
+  | terraform
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip = ["venv", ".venv", "build", "dist", "frontend-v3", "terraform"]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+warn_unused_ignores = false
+warn_redundant_casts = true
+no_implicit_optional = true
+# Pragmatic baseline: type-check without forcing full annotation coverage yet.
+check_untyped_defs = false
+disallow_untyped_defs = false
+exclude = "(venv|\\.venv|build|dist|frontend-v3|terraform|tests)/"
+
+# --- Typing debt (incremental adoption / ratchet) ---
+# These modules still have type errors (mostly SQLAlchemy ORM Column patterns
+# and dict[str, object] accesses). mypy is ENFORCED on every other module, so
+# new code stays clean. Pay this debt down one module at a time, then delete
+# the corresponding entry below.
+[[tool.mypy.overrides]]
+module = [
+    "backend.core.database",
+    "backend.core.cost_estimator",
+    "backend.core.auth",
+    "backend.core.error_parser",
+    "backend.core.security",
+    "backend.tasks.deployment_tasks",
+    "backend.api.routers.cloud_accounts",
+    "backend.api.routers.deployments",
+    "backend.api.dependencies",
+    "backend.services.state_backend_manager",
+    "backend.services.parameter_parser",
+    "backend.services.template_manager",
+    "backend.providers.terraform_provider",
+]
+ignore_errors = true

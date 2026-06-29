@@ -5,6 +5,7 @@ Exposes application metrics in Prometheus format at /metrics endpoint.
 """
 
 from fastapi import APIRouter, Response
+
 from backend.core.metrics import get_metrics_text
 
 router = APIRouter(tags=["Monitoring"])
@@ -14,7 +15,7 @@ router = APIRouter(tags=["Monitoring"])
     "/metrics",
     summary="Get Prometheus metrics",
     description="Returns application metrics in Prometheus text format for scraping.",
-    response_class=Response
+    response_class=Response,
 )
 async def get_metrics():
     """
@@ -29,7 +30,4 @@ async def get_metrics():
     - System gauges (active deployments, connected users)
     """
     metrics_text = get_metrics_text()
-    return Response(
-        content=metrics_text,
-        media_type="text/plain; charset=utf-8"
-    )
+    return Response(content=metrics_text, media_type="text/plain; charset=utf-8")

@@ -4,17 +4,18 @@ Templates Router
 Handles template discovery, metadata, parameters, and cost estimation.
 """
 
-from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import JSONResponse
-from typing import Dict, Any, Optional
-from pathlib import Path
 import json
 import logging
+from pathlib import Path
+from typing import Any, Dict, Optional
 
-from backend.api.schemas import StandardResponse, success_response, error_response
-from backend.services.parameter_parser import TemplateParameterParser
+from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
+
+from backend.api.schemas import StandardResponse, error_response, success_response
 from backend.core.cost_estimator import estimate_deployment_cost
 from backend.core.exceptions import TemplateNotFoundError
+from backend.services.parameter_parser import TemplateParameterParser
 
 logger = logging.getLogger(__name__)
 
@@ -24,20 +25,20 @@ router = APIRouter(prefix="/templates", tags=["Templates"])
 def get_template_manager():
     """Get template manager instance (lazy import to avoid circular imports)."""
     from backend.api.routes import template_manager
+
     return template_manager
 
 
 @router.get("", summary="List Templates", response_model=StandardResponse)
 async def list_templates(
     provider_type: Optional[str] = Query(None, description="Filter by provider type"),
-    cloud: Optional[str] = Query(None, description="Filter by cloud (azure, gcp)")
+    cloud: Optional[str] = Query(None, description="Filter by cloud (azure, gcp)"),
 ):
     """List available deployment templates."""
     tm = get_template_manager()
     templates = tm.list_templates(provider_type=provider_type, cloud=cloud)
     return success_response(
-        message=f"Found {len(templates)} templates",
-        data={"templates": templates, "count": len(templates)}
+        message=f"Found {len(templates)} templates", data={"templates": templates, "count": len(templates)}
     )
 
 
@@ -65,7 +66,9 @@ async def get_template_content(provider_type: str, template_name: str):
     return JSONResponse(content={"content": content}, media_type="application/json")
 
 
-@router.get("/{provider_type}/{template_name}/metadata", summary="Get Template Metadata", response_model=StandardResponse)
+@router.get(
+    "/{provider_type}/{template_name}/metadata", summary="Get Template Metadata", response_model=StandardResponse
+)
 async def get_template_metadata(provider_type: str, template_name: str):
     """Get comprehensive metadata for a template."""
     try:
@@ -80,11 +83,16 @@ async def get_template_metadata(provider_type: str, template_name: str):
         metadata_file = template_file.parent / f"{template_name}.metadata.json"
 
         if metadata_file.exists():
-            with open(metadata_file, 'r') as f:
+            with open(metadata_file, "r") as f:
                 metadata = json.load(f)
             return success_response(
                 message="Template metadata loaded",
-                data={"template_name": template_name, "provider_type": provider_type, "has_metadata": True, "metadata": metadata}
+                data={
+                    "template_name": template_name,
+                    "provider_type": provider_type,
+                    "has_metadata": True,
+                    "metadata": metadata,
+                },
             )
         else:
             return success_response(
@@ -97,9 +105,9 @@ async def get_template_metadata(provider_type: str, template_name: str):
                         "name": template_name,
                         "displayName": template_name.replace("-", " ").title(),
                         "description": f"{template_name} deployment template",
-                        "provider": provider_type
-                    }
-                }
+                        "provider": provider_type,
+                    },
+                },
             )
 
     except TemplateNotFoundError:
@@ -109,7 +117,9 @@ async def get_template_metadata(provider_type: str, template_name: str):
         raise HTTPException(status_code=500, detail=f"Failed to load template metadata: {str(e)}")
 
 
-@router.get("/{provider_type}/{template_name}/parameters", summary="Get Template Parameters", response_model=StandardResponse)
+@router.get(
+    "/{provider_type}/{template_name}/parameters", summary="Get Template Parameters", response_model=StandardResponse
+)
 async def get_template_parameters(provider_type: str, template_name: str):
     """Extract and return parameters from a template."""
     try:
@@ -124,7 +134,12 @@ async def get_template_parameters(provider_type: str, template_name: str):
 
         return success_response(
             message=f"Found {len(parameters)} parameters",
-            data={"template_name": template_name, "provider_type": provider_type, "parameters": parameters_dict, "count": len(parameters)}
+            data={
+                "template_name": template_name,
+                "provider_type": provider_type,
+                "parameters": parameters_dict,
+                "count": len(parameters),
+            },
         )
 
     except FileNotFoundError as e:
@@ -134,7 +149,11 @@ async def get_template_parameters(provider_type: str, template_name: str):
         return error_response("Failed to parse template parameters", str(e), 500)
 
 
-@router.post("/{provider_type}/{template_name}/estimate-cost", summary="Estimate Deployment Cost", response_model=StandardResponse)
+@router.post(
+    "/{provider_type}/{template_name}/estimate-cost",
+    summary="Estimate Deployment Cost",
+    response_model=StandardResponse,
+)
 async def estimate_cost(provider_type: str, template_name: str, parameters: Dict[str, Any]):
     """Estimate the monthly cost of a deployment."""
     try:
@@ -145,9 +164,7 @@ async def estimate_cost(provider_type: str, template_name: str, parameters: Dict
             raise TemplateNotFoundError(template_name, provider_type)
 
         cost_estimate = await estimate_deployment_cost(
-            template_name=template_name,
-            provider_type=provider_type,
-            parameters=parameters
+            template_name=template_name, provider_type=provider_type, parameters=parameters
         )
 
         return success_response(message="Cost estimate calculated", data=cost_estimate)

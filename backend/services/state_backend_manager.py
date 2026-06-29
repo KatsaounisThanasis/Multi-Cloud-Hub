@@ -5,15 +5,14 @@ Terraform State Backend Manager
 Υποστηρίζει Azure Storage και GCS (GCP).
 """
 
-import json
-import hashlib
-from typing import Dict, Any, Optional
-from enum import Enum
 import os
+from enum import Enum
+from typing import Any, Dict, Optional
 
 
 class BackendType(str, Enum):
     """Τύποι backend για Terraform state"""
+
     AZURERM = "azurerm"  # Azure Storage
     GCS = "gcs"  # Google Cloud Storage
     LOCAL = "local"  # Local (για development)
@@ -41,18 +40,12 @@ class StateBackendManager:
 
     def _get_default_region(self) -> str:
         """Επιστρέφει default region για κάθε cloud"""
-        defaults = {
-            "gcp": "us-central1",
-            "azure": "eastus"
-        }
+        defaults = {"gcp": "us-central1", "azure": "eastus"}
         return defaults.get(self.cloud_platform, "eastus")
 
     def _determine_backend_type(self) -> BackendType:
         """Καθορίζει τον τύπο backend με βάση το cloud platform"""
-        backend_map = {
-            "gcp": BackendType.GCS,
-            "azure": BackendType.AZURERM
-        }
+        backend_map = {"gcp": BackendType.GCS, "azure": BackendType.AZURERM}
         return backend_map.get(self.cloud_platform, BackendType.LOCAL)
 
     def _generate_state_key(self) -> str:
@@ -65,17 +58,11 @@ class StateBackendManager:
 
     def _get_bucket_name_from_env(self) -> Optional[str]:
         """Παίρνει το bucket/container name από environment variables"""
-        env_vars = {
-            "gcp": "TERRAFORM_STATE_GCS_BUCKET",
-            "azure": "TERRAFORM_STATE_STORAGE_ACCOUNT"
-        }
-        return os.getenv(env_vars.get(self.cloud_platform))
+        env_vars = {"gcp": "TERRAFORM_STATE_GCS_BUCKET", "azure": "TERRAFORM_STATE_STORAGE_ACCOUNT"}
+        env_key = env_vars.get(self.cloud_platform)
+        return os.getenv(env_key) if env_key else None
 
-    def generate_backend_config(
-        self,
-        bucket_name: Optional[str] = None,
-        **kwargs
-    ) -> Dict[str, Any]:
+    def generate_backend_config(self, bucket_name: Optional[str] = None, **kwargs) -> Dict[str, Any]:
         """
         Δημιουργεί backend configuration για Terraform.
 
@@ -101,10 +88,7 @@ class StateBackendManager:
             return self._generate_local_backend()
 
     def _generate_azurerm_backend(
-        self,
-        storage_account: Optional[str],
-        container_name: str = "terraform-state",
-        **kwargs
+        self, storage_account: Optional[str], container_name: str = "terraform-state", **kwargs
     ) -> Dict[str, Any]:
         """
         Δημιουργεί Azure Storage backend configuration.
@@ -124,7 +108,7 @@ class StateBackendManager:
                         "storage_account_name": storage_account,
                         "container_name": container_name,
                         "key": self._generate_state_key(),
-                        "use_azuread_auth": True  # Χρήση Azure AD authentication
+                        "use_azuread_auth": True,  # Χρήση Azure AD authentication
                     }
                 }
             }
@@ -138,10 +122,7 @@ class StateBackendManager:
         return config
 
     def _generate_gcs_backend(
-        self,
-        bucket_name: Optional[str],
-        prefix: str = "terraform-state",
-        **kwargs
+        self, bucket_name: Optional[str], prefix: str = "terraform-state", **kwargs
     ) -> Dict[str, Any]:
         """
         Δημιουργεί GCS backend configuration για GCP.
@@ -159,7 +140,7 @@ class StateBackendManager:
                     "gcs": {
                         "bucket": bucket_name,
                         "prefix": f"{prefix}/{self.deployment_id}",
-                        "encryption_key": kwargs.get("encryption_key")  # Optional customer-supplied encryption
+                        "encryption_key": kwargs.get("encryption_key"),  # Optional customer-supplied encryption
                     }
                 }
             }
@@ -174,20 +155,10 @@ class StateBackendManager:
         ΠΡΟΣΟΧΗ: Το local backend δεν πρέπει να χρησιμοποιείται σε production!
         """
         return {
-            "terraform": {
-                "backend": {
-                    "local": {
-                        "path": f"./terraform-states/{self.deployment_id}/terraform.tfstate"
-                    }
-                }
-            }
+            "terraform": {"backend": {"local": {"path": f"./terraform-states/{self.deployment_id}/terraform.tfstate"}}}
         }
 
-    def generate_backend_tf_content(
-        self,
-        bucket_name: Optional[str] = None,
-        **kwargs
-    ) -> str:
+    def generate_backend_tf_content(self, bucket_name: Optional[str] = None, **kwargs) -> str:
         """
         Δημιουργεί το περιεχόμενο του backend.tf file.
 
@@ -217,11 +188,11 @@ class StateBackendManager:
                 lines.append(self._dict_to_hcl(value, indent + 1))
                 lines.append(f"{indent_str}}}")
             elif isinstance(value, bool):
-                lines.append(f'{indent_str}{key} = {str(value).lower()}')
+                lines.append(f"{indent_str}{key} = {str(value).lower()}")
             elif isinstance(value, str):
                 lines.append(f'{indent_str}{key} = "{value}"')
             elif isinstance(value, (int, float)):
-                lines.append(f'{indent_str}{key} = {value}')
+                lines.append(f"{indent_str}{key} = {value}")
             elif value is not None:
                 lines.append(f'{indent_str}{key} = "{value}"')
 
@@ -239,7 +210,7 @@ class StateBackendManager:
             "deployment_id": self.deployment_id,
             "cloud_platform": self.cloud_platform,
             "region": self.region,
-            "state_key": self._generate_state_key()
+            "state_key": self._generate_state_key(),
         }
 
     @staticmethod
@@ -252,18 +223,15 @@ class StateBackendManager:
         """
         requirements = {
             "gcp": {
-                "has_credentials": bool(
-                    os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("GOOGLE_CREDENTIALS")
-                ),
-                "has_bucket_config": bool(os.getenv("TERRAFORM_STATE_GCS_BUCKET"))
+                "has_credentials": bool(os.getenv("GOOGLE_APPLICATION_CREDENTIALS") or os.getenv("GOOGLE_CREDENTIALS")),
+                "has_bucket_config": bool(os.getenv("TERRAFORM_STATE_GCS_BUCKET")),
             },
             "azure": {
                 "has_credentials": bool(
-                    os.getenv("AZURE_SUBSCRIPTION_ID") and
-                    (os.getenv("AZURE_CLIENT_ID") or os.getenv("ARM_CLIENT_ID"))
+                    os.getenv("AZURE_SUBSCRIPTION_ID") and (os.getenv("AZURE_CLIENT_ID") or os.getenv("ARM_CLIENT_ID"))
                 ),
-                "has_storage_config": bool(os.getenv("TERRAFORM_STATE_STORAGE_ACCOUNT"))
-            }
+                "has_storage_config": bool(os.getenv("TERRAFORM_STATE_STORAGE_ACCOUNT")),
+            },
         }
 
         return requirements.get(cloud_platform.lower(), {})
@@ -271,11 +239,7 @@ class StateBackendManager:
 
 # Helper function για γρήγορη χρήση
 def create_backend_config(
-    cloud_platform: str,
-    deployment_id: str,
-    region: Optional[str] = None,
-    storage_name: Optional[str] = None,
-    **kwargs
+    cloud_platform: str, deployment_id: str, region: Optional[str] = None, storage_name: Optional[str] = None, **kwargs
 ) -> Dict[str, Any]:
     """
     Helper function για γρήγορη δημιουργία backend configuration.

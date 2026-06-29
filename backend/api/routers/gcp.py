@@ -4,10 +4,11 @@ GCP Router
 Handles GCP-specific dynamic options endpoints (machine types, zones, regions).
 """
 
-from fastapi import APIRouter, Query
-from typing import Optional
-import os
 import logging
+import os
+from typing import Optional
+
+from fastapi import APIRouter, Query
 
 from backend.api.schemas import StandardResponse, success_response
 
@@ -63,25 +64,30 @@ async def get_gcp_projects():
         return success_response("GCP project not configured", {"projects": [], "count": 0})
 
     return success_response(
-        "GCP projects",
-        {"projects": [{"name": project_id, "display_name": project_id}], "count": 1}
+        "GCP projects", {"projects": [{"name": project_id, "display_name": project_id}], "count": 1}
     )
 
 
 @router.get("/machine-types", summary="Get GCP Machine Types", response_model=StandardResponse)
 async def get_gcp_machine_types(
     zone: Optional[str] = Query(None, description="GCP zone"),
-    region: Optional[str] = Query(None, description="GCP region")
+    region: Optional[str] = Query(None, description="GCP region"),
 ):
     """Get available GCP machine types."""
     if not _has_valid_credentials():
         return success_response(
             "Available GCP machine types (fallback)",
-            {"zone": zone, "region": region, "machine_types": FALLBACK_MACHINE_TYPES, "count": len(FALLBACK_MACHINE_TYPES)}
+            {
+                "zone": zone,
+                "region": region,
+                "machine_types": FALLBACK_MACHINE_TYPES,
+                "count": len(FALLBACK_MACHINE_TYPES),
+            },
         )
 
     try:
         from backend.services.gcp_api_client import GCPAPIClient
+
         async with GCPAPIClient() as client:
             # Get zone from region if needed
             target_zone = zone
@@ -95,19 +101,29 @@ async def get_gcp_machine_types(
         if not machine_types:
             return success_response(
                 "Available GCP machine types (fallback)",
-                {"zone": zone, "region": region, "machine_types": FALLBACK_MACHINE_TYPES, "count": len(FALLBACK_MACHINE_TYPES)}
+                {
+                    "zone": zone,
+                    "region": region,
+                    "machine_types": FALLBACK_MACHINE_TYPES,
+                    "count": len(FALLBACK_MACHINE_TYPES),
+                },
             )
 
         return success_response(
             "Available GCP machine types",
-            {"zone": target_zone, "region": region, "machine_types": machine_types, "count": len(machine_types)}
+            {"zone": target_zone, "region": region, "machine_types": machine_types, "count": len(machine_types)},
         )
 
     except Exception as e:
         logger.warning(f"Error fetching GCP machine types: {e}")
         return success_response(
             "Available GCP machine types (fallback)",
-            {"zone": zone, "region": region, "machine_types": FALLBACK_MACHINE_TYPES, "count": len(FALLBACK_MACHINE_TYPES)}
+            {
+                "zone": zone,
+                "region": region,
+                "machine_types": FALLBACK_MACHINE_TYPES,
+                "count": len(FALLBACK_MACHINE_TYPES),
+            },
         )
 
 
@@ -117,12 +133,12 @@ async def get_gcp_zones(region: Optional[str] = Query(None, description="Filter 
     if not _has_valid_credentials():
         zones = [z for z in FALLBACK_ZONES if not region or z["region"] == region]
         return success_response(
-            f"Available GCP zones (fallback){f' in {region}' if region else ''}",
-            {"zones": zones, "count": len(zones)}
+            f"Available GCP zones (fallback){f' in {region}' if region else ''}", {"zones": zones, "count": len(zones)}
         )
 
     try:
         from backend.services.gcp_api_client import GCPAPIClient
+
         async with GCPAPIClient() as client:
             zones = await client.get_zones(region=region)
 
@@ -130,20 +146,18 @@ async def get_gcp_zones(region: Optional[str] = Query(None, description="Filter 
             zones = [z for z in FALLBACK_ZONES if not region or z["region"] == region]
             return success_response(
                 f"Available GCP zones (fallback){f' in {region}' if region else ''}",
-                {"zones": zones, "count": len(zones)}
+                {"zones": zones, "count": len(zones)},
             )
 
         return success_response(
-            f"Available GCP zones{f' in {region}' if region else ''}",
-            {"zones": zones, "count": len(zones)}
+            f"Available GCP zones{f' in {region}' if region else ''}", {"zones": zones, "count": len(zones)}
         )
 
     except Exception as e:
         logger.warning(f"Error fetching GCP zones: {e}")
         zones = [z for z in FALLBACK_ZONES if not region or z["region"] == region]
         return success_response(
-            f"Available GCP zones (fallback){f' in {region}' if region else ''}",
-            {"zones": zones, "count": len(zones)}
+            f"Available GCP zones (fallback){f' in {region}' if region else ''}", {"zones": zones, "count": len(zones)}
         )
 
 
@@ -152,29 +166,24 @@ async def get_gcp_regions():
     """Get all available GCP regions."""
     if not _has_valid_credentials():
         return success_response(
-            "Available GCP regions (fallback)",
-            {"regions": FALLBACK_REGIONS, "count": len(FALLBACK_REGIONS)}
+            "Available GCP regions (fallback)", {"regions": FALLBACK_REGIONS, "count": len(FALLBACK_REGIONS)}
         )
 
     try:
         from backend.services.gcp_api_client import GCPAPIClient
+
         async with GCPAPIClient() as client:
             regions = await client.get_regions()
 
         if not regions:
             return success_response(
-                "Available GCP regions (fallback)",
-                {"regions": FALLBACK_REGIONS, "count": len(FALLBACK_REGIONS)}
+                "Available GCP regions (fallback)", {"regions": FALLBACK_REGIONS, "count": len(FALLBACK_REGIONS)}
             )
 
-        return success_response(
-            "Available GCP regions",
-            {"regions": regions, "count": len(regions)}
-        )
+        return success_response("Available GCP regions", {"regions": regions, "count": len(regions)})
 
     except Exception as e:
         logger.warning(f"Error fetching GCP regions: {e}")
         return success_response(
-            "Available GCP regions (fallback)",
-            {"regions": FALLBACK_REGIONS, "count": len(FALLBACK_REGIONS)}
+            "Available GCP regions (fallback)", {"regions": FALLBACK_REGIONS, "count": len(FALLBACK_REGIONS)}
         )

@@ -5,15 +5,15 @@ This module provides application metrics for monitoring and observability.
 Metrics are exposed at /metrics endpoint in Prometheus format.
 """
 
-import time
-from typing import Callable, Optional
-from functools import wraps
-from collections import defaultdict
 import threading
-import os
+import time
+from collections import defaultdict
+from functools import wraps
+from typing import Callable, Optional
 
 # Simple in-memory metrics storage (for environments without prometheus_client)
 # In production, consider using prometheus_client library
+
 
 class MetricsRegistry:
     """
@@ -117,6 +117,7 @@ metrics = MetricsRegistry()
 # Pre-defined Metrics
 # =============================================================================
 
+
 # HTTP Request metrics
 def record_request(method: str, path: str, status_code: int, duration: float):
     """Record HTTP request metrics."""
@@ -170,6 +171,7 @@ def set_connected_users(count: int):
 # Decorator for timing functions
 # =============================================================================
 
+
 def timed(metric_name: str, labels: Optional[dict] = None):
     """
     Decorator to time function execution and record as histogram.
@@ -179,6 +181,7 @@ def timed(metric_name: str, labels: Optional[dict] = None):
         def process_data():
             ...
     """
+
     def decorator(func: Callable):
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -188,7 +191,9 @@ def timed(metric_name: str, labels: Optional[dict] = None):
             finally:
                 duration = time.time() - start_time
                 metrics.observe_histogram(metric_name, duration, labels=labels)
+
         return wrapper
+
     return decorator
 
 
@@ -201,6 +206,7 @@ def async_timed(metric_name: str, labels: Optional[dict] = None):
         async def fetch_data():
             ...
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -210,13 +216,16 @@ def async_timed(metric_name: str, labels: Optional[dict] = None):
             finally:
                 duration = time.time() - start_time
                 metrics.observe_histogram(metric_name, duration, labels=labels)
+
         return wrapper
+
     return decorator
 
 
 # =============================================================================
 # Metrics Endpoint
 # =============================================================================
+
 
 def get_metrics_text() -> str:
     """Get all metrics in Prometheus text format."""

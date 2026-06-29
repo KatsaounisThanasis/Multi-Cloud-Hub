@@ -3,9 +3,10 @@ Live API Integration Tests
 Tests that run against the actual running API (localhost:8000)
 Requires Docker services to be running: docker compose up -d
 """
+import os
+
 import pytest
 import requests
-import os
 
 # Base URL for the live API
 API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
@@ -22,8 +23,7 @@ def api_is_available():
 
 # Skip all tests in this module if API is not available
 pytestmark = pytest.mark.skipif(
-    not api_is_available(),
-    reason="Live API not available at localhost:8000 - start with 'docker compose up -d'"
+    not api_is_available(), reason="Live API not available at localhost:8000 - start with 'docker compose up -d'"
 )
 
 
@@ -235,8 +235,12 @@ class TestLiveDeploymentsEndpoint:
         if data["data"]["total"] > 0:
             deployment = data["data"]["deployments"][0]
             required_fields = [
-                "deployment_id", "provider_type", "template_name",
-                "resource_group", "status", "created_at"
+                "deployment_id",
+                "provider_type",
+                "template_name",
+                "resource_group",
+                "status",
+                "created_at",
             ]
             for field in required_fields:
                 assert field in deployment, f"Missing field: {field}"
@@ -254,16 +258,10 @@ class TestLiveCostEstimation:
 
     def test_azure_storage_cost_estimate(self):
         """Test cost estimation for Azure storage account"""
-        payload = {
-            "location": "westeurope",
-            "parameters": {
-                "storage_account_name": "testestimate123"
-            }
-        }
+        payload = {"location": "westeurope", "parameters": {"storage_account_name": "testestimate123"}}
 
         response = requests.post(
-            f"{API_BASE_URL}/templates/terraform-azure/storage-account/estimate-cost",
-            json=payload
+            f"{API_BASE_URL}/templates/terraform-azure/storage-account/estimate-cost", json=payload
         )
 
         assert response.status_code == 200
@@ -277,16 +275,10 @@ class TestLiveCostEstimation:
         """Test cost estimation for GCP storage bucket"""
         payload = {
             "location": "us-central1",
-            "parameters": {
-                "bucket_name": "testestimate123",
-                "storage_class": "STANDARD"
-            }
+            "parameters": {"bucket_name": "testestimate123", "storage_class": "STANDARD"},
         }
 
-        response = requests.post(
-            f"{API_BASE_URL}/templates/terraform-gcp/storage-bucket/estimate-cost",
-            json=payload
-        )
+        response = requests.post(f"{API_BASE_URL}/templates/terraform-gcp/storage-bucket/estimate-cost", json=payload)
 
         assert response.status_code == 200
         data = response.json()
@@ -338,8 +330,6 @@ class TestLiveErrorHandling:
     def test_invalid_json_body(self):
         """Test 422 for invalid JSON in request body"""
         response = requests.post(
-            f"{API_BASE_URL}/deploy",
-            data="invalid json",
-            headers={"Content-Type": "application/json"}
+            f"{API_BASE_URL}/deploy", data="invalid json", headers={"Content-Type": "application/json"}
         )
         assert response.status_code == 422

@@ -1,20 +1,18 @@
 """
 Unit tests for Security Middleware (Rate Limiting and CSRF)
 """
-import pytest
 import time
-import os
-from unittest.mock import MagicMock, patch
-from fastapi import Request
+from unittest.mock import MagicMock
+
+import pytest
 
 from backend.core.security import (
-    InMemoryRateLimiter,
-    RateLimitingMiddleware,
-    RateLimitExceeded,
-    CSRFProtection,
     CSRFMiddleware,
+    CSRFProtection,
+    InMemoryRateLimiter,
+    RateLimitExceeded,
+    RateLimitingMiddleware,
     SecurityHeadersMiddleware,
-    RequestLoggingMiddleware
 )
 
 
@@ -145,7 +143,7 @@ class TestRateLimitingMiddleware:
         mock_request = MagicMock()
         mock_request.headers.get.side_effect = lambda key: {
             "X-Forwarded-For": "192.168.1.1, 10.0.0.1",
-            "X-Real-IP": None
+            "X-Real-IP": None,
         }.get(key)
         mock_request.client = MagicMock()
         mock_request.client.host = "127.0.0.1"
@@ -158,10 +156,7 @@ class TestRateLimitingMiddleware:
         middleware = RateLimitingMiddleware(MagicMock())
 
         mock_request = MagicMock()
-        mock_request.headers.get.side_effect = lambda key: {
-            "X-Forwarded-For": None,
-            "X-Real-IP": "10.0.0.50"
-        }.get(key)
+        mock_request.headers.get.side_effect = lambda key: {"X-Forwarded-For": None, "X-Real-IP": "10.0.0.50"}.get(key)
         mock_request.client = MagicMock()
         mock_request.client.host = "127.0.0.1"
 
@@ -271,7 +266,7 @@ class TestCSRFMiddleware:
         mock_request = MagicMock()
         mock_request.headers.get.side_effect = lambda key, default="": {
             "Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            "X-API-Key": ""
+            "X-API-Key": "",
         }.get(key, default)
 
         assert middleware._has_api_auth(mock_request) is True
@@ -283,7 +278,7 @@ class TestCSRFMiddleware:
         mock_request = MagicMock()
         mock_request.headers.get.side_effect = lambda key, default="": {
             "Authorization": "",
-            "X-API-Key": "my-api-key-123"
+            "X-API-Key": "my-api-key-123",
         }.get(key, default)
 
         assert middleware._has_api_auth(mock_request) is True
@@ -304,10 +299,10 @@ class TestSecurityHeadersMiddleware:
     @pytest.mark.asyncio
     async def test_adds_security_headers(self):
         """Test that security headers are added."""
-        from starlette.testclient import TestClient
         from starlette.applications import Starlette
         from starlette.responses import JSONResponse
         from starlette.routing import Route
+        from starlette.testclient import TestClient
 
         async def homepage(request):
             return JSONResponse({"status": "ok"})

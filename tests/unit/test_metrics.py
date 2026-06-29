@@ -1,22 +1,22 @@
 """
 Unit tests for Metrics module
 """
-import pytest
 import time
+
+import pytest
 
 from backend.core.metrics import (
     MetricsRegistry,
-    metrics,
-    record_request,
-    record_deployment_started,
-    record_deployment_completed,
+    async_timed,
+    get_metrics_text,
     record_auth_attempt,
+    record_deployment_completed,
+    record_deployment_started,
     record_rate_limit_hit,
+    record_request,
     set_active_deployments,
     set_connected_users,
     timed,
-    async_timed,
-    get_metrics_text
 )
 
 
@@ -174,6 +174,7 @@ class TestTimedDecorators:
 
     def test_timed_decorator(self):
         """Test synchronous timed decorator."""
+
         @timed("sync_function_duration", {"function": "test_func"})
         def slow_function():
             time.sleep(0.01)

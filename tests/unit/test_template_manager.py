@@ -2,9 +2,11 @@
 Simple unit tests for Template Manager
 Tests the actual implementation without complex mocking
 """
-import pytest
 from pathlib import Path
-from backend.services.template_manager import TemplateManager, TemplateFormat, CloudProvider
+
+import pytest
+
+from backend.services.template_manager import TemplateManager
 
 
 class TestTemplateManagerBasic:
@@ -15,7 +17,7 @@ class TestTemplateManagerBasic:
         manager = TemplateManager(templates_root="templates")
 
         assert manager.templates_root == Path("templates")
-        assert hasattr(manager, '_templates_cache')
+        assert hasattr(manager, "_templates_cache")
         assert isinstance(manager._templates_cache, dict)
 
     def test_list_templates_returns_list(self):
@@ -55,9 +57,9 @@ class TestTemplateManagerBasic:
             template = templates[0]
             # Check it's a dict with expected keys
             assert isinstance(template, dict)
-            assert 'name' in template
-            assert 'format' in template
-            assert 'cloud_provider' in template
+            assert "name" in template
+            assert "format" in template
+            assert "cloud_provider" in template
 
 
 class TestTemplateManagerWithMockDirectory:
@@ -71,7 +73,9 @@ class TestTemplateManagerWithMockDirectory:
 
         # Create a mock bicep file
         bicep_file = templates_dir / "test-storage.bicep"
-        bicep_file.write_text("// Test storage account template\n\nresource storage 'Microsoft.Storage/storageAccounts@2021-04-01' = {}")
+        bicep_file.write_text(
+            "// Test storage account template\n\nresource storage 'Microsoft.Storage/storageAccounts@2021-04-01' = {}"
+        )
 
         # Create terraform directories (Azure and GCP only)
         tf_azure_dir = templates_dir / "terraform" / "azure"
@@ -81,8 +85,8 @@ class TestTemplateManagerWithMockDirectory:
         tf_gcp_dir.mkdir(parents=True)
 
         # Create mock terraform files
-        (tf_azure_dir / "test-storage.tf").write_text("resource \"azurerm_storage_account\" \"test\" {}")
-        (tf_gcp_dir / "test-bucket.tf").write_text("resource \"google_storage_bucket\" \"test\" {}")
+        (tf_azure_dir / "test-storage.tf").write_text('resource "azurerm_storage_account" "test" {}')
+        (tf_gcp_dir / "test-bucket.tf").write_text('resource "google_storage_bucket" "test" {}')
 
         return templates_dir
 
@@ -108,11 +112,11 @@ class TestTemplateManagerWithMockDirectory:
 
         # Bicep templates should be for Azure
         for template in bicep_templates:
-            assert template['cloud_provider'] == 'azure'
+            assert template["cloud_provider"] == "azure"
 
         # GCP templates should be for GCP
         for template in gcp_templates:
-            assert template['cloud_provider'] == 'gcp'
+            assert template["cloud_provider"] == "gcp"
 
     def test_get_template_by_name(self, temp_templates_dir):
         """Test getting a specific template by name"""
@@ -125,7 +129,7 @@ class TestTemplateManagerWithMockDirectory:
 
         if len(all_templates) > 0:
             # Try to get the first template by name
-            first_template_name = all_templates[0]['name']
+            first_template_name = all_templates[0]["name"]
             template = manager.get_template(first_template_name, provider_type="bicep")
 
             # Should return TemplateMetadata object or None

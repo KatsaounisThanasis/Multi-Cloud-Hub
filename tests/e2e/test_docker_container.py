@@ -2,11 +2,13 @@
 End-to-end tests for Docker container deployment
 """
 import os
+import time
+
 import pytest
 import requests
-import time
+from docker.errors import NotFound
+
 import docker
-from docker.errors import NotFound, APIError
 
 
 @pytest.fixture(scope="module")
@@ -36,10 +38,7 @@ class TestDockerBuild:
         """Test building Docker image"""
         try:
             image, logs = docker_client.images.build(
-                path=".",
-                dockerfile="Dockerfile",
-                tag="multicloud-api:test",
-                rm=True
+                path=".", dockerfile="Dockerfile", tag="multicloud-api:test", rm=True
             )
 
             assert image is not None
@@ -57,12 +56,7 @@ class TestDockerRun:
         """Start container for testing"""
         # Build image first
         try:
-            docker_client.images.build(
-                path=".",
-                dockerfile="Dockerfile",
-                tag="multicloud-api:test",
-                rm=True
-            )
+            docker_client.images.build(path=".", dockerfile="Dockerfile", tag="multicloud-api:test", rm=True)
         except Exception as e:
             pytest.skip(f"Could not build image: {e}")
 
@@ -77,7 +71,7 @@ class TestDockerRun:
         # Start container - connect to existing network for DB/Redis access
         try:
             # Find the multicloud network
-            networks = [n.name for n in docker_client.networks.list() if 'multicloud' in n.name.lower()]
+            networks = [n.name for n in docker_client.networks.list() if "multicloud" in n.name.lower()]
             network_name = networks[0] if networks else None
 
             container = docker_client.containers.run(
@@ -88,10 +82,10 @@ class TestDockerRun:
                     "LOG_LEVEL": "INFO",
                     "ENVIRONMENT": "test",
                     "DATABASE_URL": "postgresql://apiuser:your_secure_db_password_here@postgres:5432/multicloud",
-                    "REDIS_URL": "redis://redis:6379/0"
+                    "REDIS_URL": "redis://redis:6379/0",
                 },
                 network=network_name,
-                name="multicloud-api-test"
+                name="multicloud-api-test",
             )
 
             # Wait for container to be ready
@@ -190,18 +184,11 @@ class TestDockerCompose:
         import subprocess
 
         # Use 'docker compose' (new syntax) instead of 'docker-compose'
-        result = subprocess.run(
-            ["docker", "compose", "config"],
-            capture_output=True,
-            text=True
-        )
+        result = subprocess.run(["docker", "compose", "config"], capture_output=True, text=True)
 
         assert result.returncode == 0, f"docker compose config failed: {result.stderr}"
 
-    @pytest.mark.skipif(
-        not os.path.exists("docker-compose.dev.yml"),
-        reason="docker-compose.dev.yml not found"
-    )
+    @pytest.mark.skipif(not os.path.exists("docker-compose.dev.yml"), reason="docker-compose.dev.yml not found")
     def test_docker_compose_dev_config_valid(self):
         """Test docker-compose.dev.yml is valid"""
         import subprocess
@@ -210,7 +197,7 @@ class TestDockerCompose:
         result = subprocess.run(
             ["docker", "compose", "-f", "docker-compose.yml", "-f", "docker-compose.dev.yml", "config"],
             capture_output=True,
-            text=True
+            text=True,
         )
 
         assert result.returncode == 0, f"docker compose dev config failed: {result.stderr}"
@@ -247,7 +234,7 @@ class TestDockerImageProperties:
         """Test Docker image has correct labels"""
         try:
             image = docker_client.images.get("multicloud-api:test")
-            labels = image.labels or {}
+            image.labels or {}
 
             # Check for custom labels if any were added
             # This is optional - add assertions if you add labels to Dockerfile
@@ -262,12 +249,7 @@ class TestContainerSecurity:
     def test_container_runs_as_non_root(self, docker_client):
         """Test container runs as non-root user"""
         try:
-            container = docker_client.containers.run(
-                "multicloud-api:test",
-                detach=True,
-                remove=False,
-                command="id -u"
-            )
+            container = docker_client.containers.run("multicloud-api:test", detach=True, remove=False, command="id -u")
 
             container.wait()
             logs = container.logs().decode("utf-8").strip()
@@ -284,10 +266,7 @@ class TestContainerSecurity:
         """Test container filesystem permissions"""
         try:
             container = docker_client.containers.run(
-                "multicloud-api:test",
-                detach=True,
-                remove=False,
-                command="touch /test-write"
+                "multicloud-api:test", detach=True, remove=False, command="touch /test-write"
             )
 
             exit_code = container.wait()["StatusCode"]
