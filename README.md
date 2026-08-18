@@ -26,12 +26,16 @@
 
 </div>
 
+![Architecture Diagram](docs/architecture.svg)
+
 ---
 
 <div align="center">
 <img src="ScreenShots/demo.gif" alt="Multi-Cloud Hub Demo" width="80%">
 <br><em>See Multi-Cloud Hub in action</em>
 </div>
+
+![Architecture Diagram](docs/architecture.svg)
 
 ---
 
@@ -118,6 +122,8 @@ Multi-Cloud Hub is an enterprise-grade infrastructure management platform that s
 </table>
 
 </div>
+
+![Architecture Diagram](docs/architecture.svg)
 
 ---
 
@@ -445,3 +451,5 @@ This project is licensed under the **Apache License 2.0** - see the [LICENSE](LI
 [Report Bug](https://github.com/KatsaounisThanasis/Multi-Cloud-Hub/issues) | [Request Feature](https://github.com/KatsaounisThanasis/Multi-Cloud-Hub/issues)
 
 </div>
+
+![Architecture Diagram](docs/architecture.svg)
