@@ -270,8 +270,6 @@ def has_permission(user: Dict[str, Any], permission: str) -> bool:
 # Initialize default users for testing
 def initialize_default_users():
     """Create default users for testing and development only."""
-    global user_id_counter
-
     # Only create default users in development mode
     environment = os.getenv("ENVIRONMENT", "development").lower()
     if environment == "production":
