@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Website](https://img.shields.io/badge/Website-Live_Demo-ff69b4.svg?logo=github)](https://katsaounisthanasis.github.io/Multi-Cloud-Hub/)
+[![Website](https://img.shields.io/badge/Website-Project_Site-8250df.svg?logo=github)](https://katsaounisthanasis.github.io/Multi-Cloud-Hub/)
 [![CI](https://github.com/KatsaounisThanasis/Multi-Cloud-Hub/actions/workflows/ci.yml/badge.svg)](https://github.com/KatsaounisThanasis/Multi-Cloud-Hub/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/badge/version-1.0.0-green.svg)](https://github.com/KatsaounisThanasis/Multi-Cloud-Hub/releases)
 [![License: Apache 2.0](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
