@@ -1,6 +1,7 @@
 """
 Unit tests for Metrics module
 """
+
 import time
 
 import pytest

@@ -2,6 +2,7 @@
 Simple unit tests for Template Manager
 Tests the actual implementation without complex mocking
 """
+
 from pathlib import Path
 
 import pytest

@@ -2,6 +2,7 @@
 Pytest configuration and shared fixtures
 This file is automatically loaded by pytest
 """
+
 import os
 import sys
 from pathlib import Path

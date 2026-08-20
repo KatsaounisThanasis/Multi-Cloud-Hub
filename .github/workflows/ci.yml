@@ -66,6 +66,14 @@ jobs:
         pip install -r requirements.txt
         pip install pytest pytest-asyncio pytest-cov
 
+    # The terraform-provider unit tests skip themselves when the CLI is absent;
+    # the runner image no longer ships terraform, and 14 silently-skipped tests
+    # cost enough coverage to trip the gate. Install it so they actually run.
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_wrapper: false
+
     - name: Run Backend Tests
       run: |
         export ENVIRONMENT=test

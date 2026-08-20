@@ -1,6 +1,7 @@
 """
 Unit tests for Health Router
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -30,9 +31,10 @@ class TestHealthEndpoints:
 
     def test_health_endpoint_healthy(self, client):
         """Test detailed health check when all services are healthy."""
-        with patch("backend.api.routers.health.get_db") as mock_db, patch(
-            "backend.api.routers.health.get_template_manager"
-        ) as mock_tm:
+        with (
+            patch("backend.api.routers.health.get_db") as mock_db,
+            patch("backend.api.routers.health.get_template_manager") as mock_tm,
+        ):
             # Mock database session
             mock_session = MagicMock()
             mock_db.return_value = mock_session

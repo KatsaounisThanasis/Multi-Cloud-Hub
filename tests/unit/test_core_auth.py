@@ -1,6 +1,7 @@
 """
 Unit tests for core/auth.py module
 """
+
 from datetime import datetime, timedelta
 
 import jwt

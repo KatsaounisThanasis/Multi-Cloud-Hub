@@ -1,6 +1,7 @@
 """
 Unit tests for API Client services (Azure and GCP)
 """
+
 from unittest.mock import MagicMock, patch
 
 import pytest

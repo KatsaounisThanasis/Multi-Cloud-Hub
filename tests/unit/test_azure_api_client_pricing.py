@@ -5,6 +5,7 @@ All HTTP is mocked at the client._get boundary (AsyncMock), so these tests
 exercise the request-building and response-transforming logic without any
 network access or Azure credentials.
 """
+
 from unittest.mock import AsyncMock
 
 import pytest

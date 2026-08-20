@@ -1,6 +1,7 @@
 """
 Unit tests for Terraform Provider
 """
+
 import os
 from unittest.mock import Mock, mock_open, patch
 

@@ -6,6 +6,7 @@ are exercised by calling their underlying ``.run`` callable (Celery binds
 ``self`` automatically) against an in-memory SQLite database, with the cloud
 provider and ``update_state`` mocked out so no broker/credentials are needed.
 """
+
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 

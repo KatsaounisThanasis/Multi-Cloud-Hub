@@ -1,6 +1,7 @@
 """
 Unit tests for Templates Router
 """
+
 import json
 import tempfile
 from pathlib import Path
@@ -142,9 +143,10 @@ class TestGetTemplateMetadata:
 
     def test_get_metadata_with_file(self, client):
         """Test getting metadata when metadata file exists."""
-        with patch(
-            "backend.api.routers.templates.get_template_manager"
-        ) as mock_tm, tempfile.TemporaryDirectory() as tmpdir:
+        with (
+            patch("backend.api.routers.templates.get_template_manager") as mock_tm,
+            tempfile.TemporaryDirectory() as tmpdir,
+        ):
             # Create mock template and metadata files
             template_path = Path(tmpdir) / "storage-account.tf"
             template_path.write_text("resource {}")
@@ -164,9 +166,10 @@ class TestGetTemplateMetadata:
 
     def test_get_metadata_without_file(self, client):
         """Test getting metadata when no metadata file exists."""
-        with patch(
-            "backend.api.routers.templates.get_template_manager"
-        ) as mock_tm, tempfile.TemporaryDirectory() as tmpdir:
+        with (
+            patch("backend.api.routers.templates.get_template_manager") as mock_tm,
+            tempfile.TemporaryDirectory() as tmpdir,
+        ):
             # Create only template file, no metadata
             template_path = Path(tmpdir) / "storage-account.tf"
             template_path.write_text("resource {}")
@@ -198,9 +201,10 @@ class TestGetTemplateParameters:
 
     def test_get_parameters_success(self, client):
         """Test getting template parameters."""
-        with patch("backend.api.routers.templates.get_template_manager") as mock_tm, patch(
-            "backend.api.routers.templates.TemplateParameterParser"
-        ) as mock_parser:
+        with (
+            patch("backend.api.routers.templates.get_template_manager") as mock_tm,
+            patch("backend.api.routers.templates.TemplateParameterParser") as mock_parser,
+        ):
             mock_instance = MagicMock()
             mock_instance.get_template_path.return_value = "/path/to/template.tf"
             mock_tm.return_value = mock_instance
@@ -233,9 +237,10 @@ class TestEstimateCost:
 
     def test_estimate_cost_success(self, client):
         """Test successful cost estimation."""
-        with patch("backend.api.routers.templates.get_template_manager") as mock_tm, patch(
-            "backend.api.routers.templates.estimate_deployment_cost"
-        ) as mock_estimate:
+        with (
+            patch("backend.api.routers.templates.get_template_manager") as mock_tm,
+            patch("backend.api.routers.templates.estimate_deployment_cost") as mock_estimate,
+        ):
             mock_instance = MagicMock()
             mock_instance.get_template_path.return_value = "/path/to/template.tf"
             mock_tm.return_value = mock_instance

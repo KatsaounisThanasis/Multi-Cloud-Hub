@@ -3,6 +3,7 @@ Live API Integration Tests
 Tests that run against the actual running API (localhost:8000)
 Requires Docker services to be running: docker compose up -d
 """
+
 import os
 
 import pytest

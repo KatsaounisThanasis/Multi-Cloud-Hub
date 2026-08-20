@@ -4,6 +4,7 @@ Unit tests for GCPAPIClient pricing (static DB) + Compute Engine methods.
 Compute API calls are mocked at the client._get boundary (AsyncMock); pricing
 methods use the in-code static database, so no network/credentials are needed.
 """
+
 from unittest.mock import AsyncMock
 
 import pytest

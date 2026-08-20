@@ -1,6 +1,7 @@
 """
 Unit tests for Authentication Router
 """
+
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
@@ -129,9 +130,10 @@ class TestAuthLogin:
 
     def test_login_success(self, client):
         """Test successful login."""
-        with patch("backend.api.routers.auth.authenticate_user") as mock_auth, patch(
-            "backend.api.routers.auth.create_access_token"
-        ) as mock_token:
+        with (
+            patch("backend.api.routers.auth.authenticate_user") as mock_auth,
+            patch("backend.api.routers.auth.create_access_token") as mock_token,
+        ):
             mock_auth.return_value = {"id": 1, "email": "test@example.com", "username": "testuser", "role": "user"}
             mock_token.return_value = "test_token_123"
 

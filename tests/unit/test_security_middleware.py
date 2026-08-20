@@ -1,6 +1,7 @@
 """
 Unit tests for Security Middleware (Rate Limiting and CSRF)
 """
+
 import time
 from unittest.mock import MagicMock
 

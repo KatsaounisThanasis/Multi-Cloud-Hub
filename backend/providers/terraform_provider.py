@@ -186,8 +186,7 @@ class TerraformProvider(CloudProvider):
             if not rg_exists:
                 rg_tf_path = os.path.join(config_dir, "resource_group.tf")
                 with open(rg_tf_path, "w") as f:
-                    f.write(
-                        """# Auto-create Resource Group (detected as not existing)
+                    f.write("""# Auto-create Resource Group (detected as not existing)
 resource "azurerm_resource_group" "deployment_rg" {
   name     = var.resource_group_name
   location = var.location
@@ -197,8 +196,7 @@ resource "azurerm_resource_group" "deployment_rg" {
     CreatedBy = "MultiCloud-Manager"
   }
 }
-"""
-                    )
+""")
                 logger.info("Generated resource_group.tf for auto-creation (RG does not exist)")
             else:
                 logger.info(f"Resource group '{resource_group}' already exists, skipping auto-creation")
